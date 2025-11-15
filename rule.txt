@@ -38,7 +38,7 @@ Altre considerazioni:
 - Dominio / Obiettivi / Attività: Quando si effettua una modifica (ad es. sull'importanza) i controlli e la normalizzazione (es. degli oggetti antenati) viene fatta possibilmente al blur. (Quindi ad es. l'importanza non può superare quella del genitore neppure durante la digitazione o con gli spinner.)
 
 TODO:
-- Aggiungere la stima in ore per ciascuna attività e visualizzarla nelle viste Attività e Dashboard
+- Aggiungere la stima di una attività che verrà storicizzata in ore sul dominio in ore (per adesso sarà richiesta in ore anche sulla vista, compresi i decimali dell'ora, es. 1,5 ore sarebbero un ora e 30 minuti) per ciascuna attività; Sarà possibile inserirla dalla vista "Attività"; Sulla vista attività venrgono ridotte le dimensioni di "Importanza" (sufficiente mettere "I" sul titolo) e Scadenza. I dettagli per i campi vengono visualizzati "on mouse hover" con un tooltip e non tra parentesi sul titolo; Visualizzare inoltre tale stima in ore anche nella vista dashboard con un badge simile a quello dell'importanza.
 - Mobile first: ??? definire i dettagli da vedere per ciascuna vista
 - Aggiungere il "Mission" tab
 - Inserire il calcolo di priorità e quadrante
