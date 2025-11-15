@@ -37,6 +37,11 @@ Altre considerazioni:
 - Dominio / Obiettivi / Attività: Quando si effettua una modifica (ad es. sull'importanza) i controlli e la normalizzazione (es. degli oggetti antenati) viene fatta possibilmente al blur. (Quindi ad es. l'importanza non può superare quella del genitore neppure durante la digitazione o con gli spinner.)
 
 TODO:
-- Mobile first
+- Il pezzo "sprint-strip-wrapper" assieme ai controlli dello sprint e la tripla "Nome" "Inizio" "Fine" per lo sprint devono essere considerati come un unico componente di tipo drawer riutilizzabile sia nella vista Obiettivi a breve termine che nella vista Attività e dashboard (per il filtro sprint)
+- Aggiungere la stima in ore per ciascuna attività e visualizzarla nelle viste Attività e Dashboard
+- Mobile first: ??? definire i dettagli da vedere per ciascuna vista
 - Aggiungere il "Mission" tab
-- Archiviazione della settimana: da capire meglio come gestire la settimana e i task non raggiunti, oppure i task in backlog!
+- Inserire il calcolo di priorità e quadrante
+- Inserire la vista di statistiche e performance (burndown chart, velocity, ecc)
+- Inserire la possibilità di
+- Archiviazione della settimana: da capire meglio come gestire la settimana e i task non raggiunti, oppure i task in backlog (copiarli in massa? o solo spostarli?)
