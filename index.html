@@ -73,6 +73,8 @@
         justify-content: center;
         gap: 0.75rem;
         padding: 0.5rem 0;
+        width: 100%;
+        max-width: 100%;
       }
 
       .sprint-strip {
@@ -80,6 +82,17 @@
         align-items: stretch;
         justify-content: center;
         gap: 0.5rem;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .sprint-ellipsis {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.25rem;
+        font-size: 1.1rem;
+        color: var(--muted);
       }
 
       .sprint-nav {
@@ -2119,6 +2132,16 @@
               sortedSprints.length - 1,
               currentIndex + 3
             );
+            const hasHiddenBefore = startIndex > 0;
+            const hasHiddenAfter = endIndex < sortedSprints.length - 1;
+
+            if (hasHiddenBefore) {
+              const ellipsis = document.createElement("span");
+              ellipsis.className = "sprint-ellipsis";
+              ellipsis.textContent = "…";
+              sprintStrip.appendChild(ellipsis);
+            }
+
             for (let idx = startIndex; idx <= endIndex; idx += 1) {
               const sprint = sortedSprints[idx];
               const pill = document.createElement("button");
@@ -2139,6 +2162,13 @@
                 updateSelectedSprint(sprint.id, { rerenderShortTerm: true });
               });
               sprintStrip.appendChild(pill);
+            }
+
+            if (hasHiddenAfter) {
+              const ellipsis = document.createElement("span");
+              ellipsis.className = "sprint-ellipsis";
+              ellipsis.textContent = "…";
+              sprintStrip.appendChild(ellipsis);
             }
           }
 
@@ -2761,35 +2791,46 @@
           toolbar.className = "controls";
           toolbar.appendChild(
             button("+ Attività", "primary", () => {
-              if (!AppState.data.roles.length) {
-                alert("Crea prima Ruolo > LT > BT");
+              const sprintId =
+                selectedSprintId || AppState.data.currentSprintId || null;
+              if (!sprintId) {
+                alert("Crea prima il primo ST per questo sprint");
                 return;
               }
-              const role = AppState.data.roles[0];
-              if (!role.lt_goals.length) {
-                role.lt_goals.push(
-                  createLongTerm(
-                    "Nuovo LT",
-                    "",
-                    3,
-                    DateUtils.addDays(120)
-                  )
-                );
+
+              const shortTerms = [];
+              AppState.data.roles.forEach((role) =>
+                role.lt_goals.forEach((lt) =>
+                  lt.st_goals.forEach((st) => {
+                    if (st.sprint_id === sprintId) {
+                      shortTerms.push({ role, lt, st });
+                    }
+                  })
+                )
+              );
+
+              if (!shortTerms.length) {
+                alert("Crea prima il primo ST per questo sprint");
+                return;
               }
-              const lt = role.lt_goals[0];
-              if (!lt.st_goals.length) {
-                const sprintId = ensureCurrentSprintId().id;
-                const autoSt = createShortTerm(
-                  "Nuovo BT",
-                  "",
-                  null,
-                  null,
-                  { sprintId }
-                );
-                lt.st_goals.push(autoSt);
-                attachShortTermToSprint(autoSt, sprintId);
+
+              const { roleId, ltId, stId } = TaskFilters;
+              let targetEntry = null;
+              if (stId) {
+                targetEntry = shortTerms.find(({ st }) => st.id === stId) || null;
               }
-              lt.st_goals[0].tasks.push(
+              if (!targetEntry && ltId) {
+                targetEntry = shortTerms.find(({ lt }) => lt.id === ltId) || null;
+              }
+              if (!targetEntry && roleId) {
+                targetEntry =
+                  shortTerms.find(({ role }) => role.id === roleId) || null;
+              }
+              if (!targetEntry) {
+                targetEntry = shortTerms[0];
+              }
+
+              targetEntry.st.tasks.push(
                 createTask("Nuova attività", "", null, null)
               );
               AppState.persist();
