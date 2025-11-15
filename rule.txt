@@ -11,7 +11,7 @@ Aggiornamenti svolti:
 - La vista "Obiettivi a breve termine" espone una striscia di sprint centrata con frecce di navigazione, evidenzia lo sprint corrente e mantiene sincronizzati i filtri di Attività e Dashboard sullo sprint selezionato.
 - La strip degli sprint occupa l'intera larghezza disponibile, mantenendo stabile il layout e visualizzando le ellissi quando sono presenti sprint non visibili.
 - Nella vista "Attività" il pulsante "+ Attività" aggiunge i nuovi task all'obiettivo BT dello sprint selezionato, segnalando di creare prima un BT se lo sprint non ne contiene.
-- Strip sprint, controlli e dettagli (Nome/Inizio/Fine) sono stati raccolti in un drawer riutilizzabile attivabile da pulsante, condiviso tra le viste Obiettivi BT, Attività e Dashboard per gestire/filtrare lo sprint selezionato.
+- Strip sprint, controlli e dettagli (Nome/Inizio/Fine) sono raccolti nel drawer riutilizzabile "Gestione sprint", condiviso tra le viste Obiettivi BT, Attività e Dashboard: mantiene lo stato di apertura e si apre/chiude solo dalla relativa linguetta.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.

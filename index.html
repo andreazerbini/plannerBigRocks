@@ -1145,6 +1145,25 @@
         });
 
         let activeTab = "roles";
+        const sprintDrawerOpenState = {
+          st: true,
+          tasks: false,
+          dash: false,
+        };
+
+        function getSprintDrawerOpenState(key, fallback) {
+          if (!key) return fallback;
+          if (!Object.prototype.hasOwnProperty.call(sprintDrawerOpenState, key)) {
+            sprintDrawerOpenState[key] = fallback;
+          }
+          return sprintDrawerOpenState[key];
+        }
+
+        function setSprintDrawerOpenState(key, value) {
+          if (!key) return;
+          sprintDrawerOpenState[key] = Boolean(value);
+        }
+
         let selectedSprintId = AppState.data.currentSprintId || null;
 
         function updateSelectedSprint(
@@ -1230,12 +1249,24 @@
 
         function createSprintDrawer(
           { sortedSprints, selectedSprint, prevSprint, nextSprint },
-          { startOpen = false, label = "Sprint", syncShortTerm = false } = {}
+          {
+            startOpen = false,
+            label = "Gestione sprint",
+            syncShortTerm = false,
+            stateKey = null,
+          } = {}
         ) {
           const drawer = document.createElement("section");
           drawer.className = "drawer sprint-drawer";
-          if (startOpen) {
+          const shouldStartOpen = stateKey
+            ? getSprintDrawerOpenState(stateKey, startOpen)
+            : startOpen;
+          if (shouldStartOpen) {
             drawer.classList.add("open");
+          }
+
+          if (stateKey) {
+            setSprintDrawerOpenState(stateKey, shouldStartOpen);
           }
 
           const toggle = document.createElement("button");
@@ -1255,6 +1286,12 @@
 
           toggle.addEventListener("click", () => {
             drawer.classList.toggle("open");
+            if (stateKey) {
+              setSprintDrawerOpenState(
+                stateKey,
+                drawer.classList.contains("open")
+              );
+            }
             syncToggleState();
           });
 
@@ -2436,6 +2473,7 @@
             startOpen: true,
             label: "Gestione sprint",
             syncShortTerm: true,
+            stateKey: "st",
           });
 
           const rows = [];
@@ -2702,8 +2740,9 @@
           dom.view.innerHTML = "";
           const sprintContext = getSprintUiContext();
           const sprintDrawer = createSprintDrawer(sprintContext, {
-            label: "Filtro sprint",
+            label: "Gestione sprint",
             startOpen: false,
+            stateKey: "tasks",
           });
           const rows = getFilteredTaskRefs();
 
@@ -2995,8 +3034,9 @@
           dom.view.innerHTML = "";
           const sprintContext = getSprintUiContext();
           const sprintDrawer = createSprintDrawer(sprintContext, {
-            label: "Filtro sprint",
+            label: "Gestione sprint",
             startOpen: false,
+            stateKey: "dash",
           });
           const filtersBar = createTaskFiltersBar({
             onExport: () => exportTasksToCsv(getFilteredTaskRefs()),
