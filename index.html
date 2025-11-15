@@ -173,6 +173,12 @@
         box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.45);
       }
 
+      .sprint-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+
       button,
       input,
       select,
@@ -207,6 +213,63 @@
         color: #2b100f;
         border-color: transparent;
         background: linear-gradient(135deg, #ef4444, #f59e0b);
+      }
+
+      .drawer {
+        border: 1px solid var(--border);
+        border-radius: 0.9rem;
+        background: rgba(18, 24, 38, 0.7);
+        overflow: hidden;
+      }
+
+      .drawer + .drawer {
+        margin-top: 0.75rem;
+      }
+
+      .drawer-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .drawer-toggle:hover {
+        border: none;
+        background: rgba(15, 23, 42, 0.75);
+      }
+
+      .drawer-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .drawer-toggle-icon {
+        font-size: 0.95rem;
+        transition: transform 0.2s ease;
+      }
+
+      .drawer.open .drawer-toggle-icon {
+        transform: rotate(180deg);
+      }
+
+      .drawer-content {
+        display: none;
+        padding: 0.9rem 1rem 1rem;
+        gap: 0.75rem;
+      }
+
+      .drawer.open .drawer-content {
+        display: grid;
       }
 
       nav.tabs {
@@ -1086,7 +1149,7 @@
 
         function updateSelectedSprint(
           nextId,
-          { rerenderShortTerm = false } = {}
+          { rerenderShortTerm = false, rerenderTasks = true } = {}
         ) {
           const normalized = nextId != null ? String(nextId) : null;
           if (normalized === selectedSprintId) {
@@ -1096,10 +1159,319 @@
             return;
           }
           selectedSprintId = normalized;
-          rerenderTaskView();
+          if (rerenderTasks) {
+            rerenderTaskView();
+          }
           if (rerenderShortTerm) {
             render();
           }
+        }
+
+        function getSprintUiContext() {
+          const ensured = ensureCurrentSprintId();
+          if (ensured.created) {
+            AppState.persist();
+          }
+          if (!selectedSprintId && ensured.id) {
+            updateSelectedSprint(ensured.id, { rerenderTasks: false });
+          }
+
+          const sortedSprints = Array.isArray(AppState.data.sprints)
+            ? AppState.data.sprints.slice()
+            : [];
+          sortedSprints.sort((a, b) => {
+            const startA = a.start || "";
+            const startB = b.start || "";
+            if (startA && startB && startA !== startB) {
+              return startA.localeCompare(startB);
+            }
+            return (a.name || "").localeCompare(b.name || "");
+          });
+
+          if (
+            sortedSprints.length &&
+            !sortedSprints.some((sprint) => sprint.id === selectedSprintId)
+          ) {
+            const fallbackId =
+              AppState.data.currentSprintId || sortedSprints[0]?.id || null;
+            if (fallbackId && fallbackId !== selectedSprintId) {
+              updateSelectedSprint(fallbackId, { rerenderTasks: false });
+            }
+          }
+
+          if (!selectedSprintId && sortedSprints[0]) {
+            updateSelectedSprint(sortedSprints[0].id, { rerenderTasks: false });
+          }
+
+          const resolvedId = selectedSprintId;
+          const selectedSprint =
+            sortedSprints.find((sprint) => sprint.id === resolvedId) ||
+            sortedSprints[0] ||
+            null;
+
+          const selectedIndex = selectedSprint
+            ? sortedSprints.findIndex((sprint) => sprint.id === selectedSprint.id)
+            : -1;
+          const prevSprint =
+            selectedIndex > 0 ? sortedSprints[selectedIndex - 1] : null;
+          const nextSprint =
+            selectedIndex >= 0 &&
+            selectedIndex < sortedSprints.length - 1
+              ? sortedSprints[selectedIndex + 1]
+              : null;
+
+          return {
+            sortedSprints,
+            selectedSprint,
+            prevSprint,
+            nextSprint,
+          };
+        }
+
+        function createSprintDrawer(
+          { sortedSprints, selectedSprint, prevSprint, nextSprint },
+          { startOpen = false, label = "Sprint", syncShortTerm = false } = {}
+        ) {
+          const drawer = document.createElement("section");
+          drawer.className = "drawer sprint-drawer";
+          if (startOpen) {
+            drawer.classList.add("open");
+          }
+
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "drawer-toggle";
+          const toggleLabel = document.createElement("span");
+          toggleLabel.textContent = label;
+          const toggleIcon = document.createElement("span");
+          toggleIcon.className = "drawer-toggle-icon";
+          toggle.append(toggleLabel, toggleIcon);
+
+          const syncToggleState = () => {
+            const isOpen = drawer.classList.contains("open");
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            toggleIcon.textContent = isOpen ? "▴" : "▾";
+          };
+
+          toggle.addEventListener("click", () => {
+            drawer.classList.toggle("open");
+            syncToggleState();
+          });
+
+          drawer.appendChild(toggle);
+          syncToggleState();
+
+          const content = document.createElement("div");
+          content.className = "drawer-content";
+
+          const sprintStripWrapper = document.createElement("div");
+          sprintStripWrapper.className = "sprint-strip-wrapper";
+          const sprintStrip = document.createElement("div");
+          sprintStrip.className = "sprint-strip";
+
+          const prevBtn = button("←", "sprint-nav", () => {
+            if (prevSprint) {
+              updateSelectedSprint(prevSprint.id, {
+                rerenderShortTerm: syncShortTerm,
+              });
+            }
+          });
+          prevBtn.disabled = !prevSprint;
+
+          const nextBtn = button("→", "sprint-nav", () => {
+            if (nextSprint) {
+              updateSelectedSprint(nextSprint.id, {
+                rerenderShortTerm: syncShortTerm,
+              });
+            }
+          });
+          nextBtn.disabled = !nextSprint;
+
+          sprintStripWrapper.append(prevBtn, sprintStrip, nextBtn);
+
+          if (sortedSprints.length) {
+            const selectedIndex = selectedSprint
+              ? sortedSprints.findIndex((s) => s.id === selectedSprint.id)
+              : 0;
+            const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+            const startIndex = Math.max(0, currentIndex - 3);
+            const endIndex = Math.min(
+              sortedSprints.length - 1,
+              currentIndex + 3
+            );
+            const hasHiddenBefore = startIndex > 0;
+            const hasHiddenAfter = endIndex < sortedSprints.length - 1;
+
+            if (hasHiddenBefore) {
+              const ellipsis = document.createElement("span");
+              ellipsis.className = "sprint-ellipsis";
+              ellipsis.textContent = "…";
+              sprintStrip.appendChild(ellipsis);
+            }
+
+            for (let idx = startIndex; idx <= endIndex; idx += 1) {
+              const sprint = sortedSprints[idx];
+              const pill = document.createElement("button");
+              pill.type = "button";
+              pill.className = `sprint-pill${
+                sprint.id === selectedSprintId ? " selected" : ""
+              }${
+                sprint.id === AppState.data.currentSprintId ? " current" : ""
+              }`;
+              const name = document.createElement("span");
+              name.className = "sprint-name";
+              name.textContent = sprint.name || "Sprint";
+              const dates = document.createElement("span");
+              dates.className = "sprint-dates";
+              dates.textContent = formatSprintRange(sprint);
+              pill.append(name, dates);
+              pill.addEventListener("click", () => {
+                updateSelectedSprint(sprint.id, {
+                  rerenderShortTerm: syncShortTerm,
+                });
+              });
+              sprintStrip.appendChild(pill);
+            }
+
+            if (hasHiddenAfter) {
+              const ellipsis = document.createElement("span");
+              ellipsis.className = "sprint-ellipsis";
+              ellipsis.textContent = "…";
+              sprintStrip.appendChild(ellipsis);
+            }
+          } else {
+            const empty = document.createElement("span");
+            empty.className = "sprint-ellipsis";
+            empty.textContent = "Nessuno sprint";
+            sprintStrip.appendChild(empty);
+          }
+
+          const sprintActions = document.createElement("div");
+          sprintActions.className = "controls";
+          sprintActions.append(
+            button("+ Sprint", "primary", () => {
+              const newSprint = createSprint(
+                `Sprint ${AppState.data.sprints.length + 1}`,
+                DateUtils.today(),
+                DateUtils.addDays(14)
+              );
+              AppState.data.sprints.push(newSprint);
+              AppState.data.currentSprintId = newSprint.id;
+              updateSelectedSprint(newSprint.id, {
+                rerenderShortTerm: syncShortTerm,
+              });
+              AppState.persist();
+              render();
+            })
+          );
+
+          if (
+            selectedSprint &&
+            AppState.data.currentSprintId !== selectedSprint.id
+          ) {
+            sprintActions.append(
+              button("Imposta come corrente", "", () => {
+                AppState.data.currentSprintId = selectedSprint.id;
+                AppState.persist();
+                render();
+              })
+            );
+          }
+
+          if (selectedSprint) {
+            const deleteSprintBtn = button("Elimina sprint", "", () => {
+              if (
+                (selectedSprint.st_goal_ids || []).length &&
+                !confirmDelete(
+                  "Lo sprint contiene obiettivi BT. Svuotarlo prima di eliminarlo?"
+                )
+              ) {
+                return;
+              }
+              if ((selectedSprint.st_goal_ids || []).length) {
+                alert(
+                  "Rimuovi gli obiettivi BT dallo sprint prima di eliminarlo."
+                );
+                return;
+              }
+              AppState.data.sprints = AppState.data.sprints.filter(
+                (candidate) => candidate.id !== selectedSprint.id
+              );
+              if (AppState.data.currentSprintId === selectedSprint.id) {
+                AppState.data.currentSprintId =
+                  AppState.data.sprints[0]?.id || null;
+              }
+              updateSelectedSprint(
+                AppState.data.currentSprintId ||
+                  AppState.data.sprints[0]?.id ||
+                  null,
+                { rerenderShortTerm: syncShortTerm }
+              );
+              AppState.persist();
+              render();
+            });
+            if ((selectedSprint.st_goal_ids || []).length) {
+              deleteSprintBtn.disabled = true;
+              deleteSprintBtn.title =
+                "Sposta o elimina gli obiettivi BT prima di eliminare lo sprint.";
+            }
+            sprintActions.append(deleteSprintBtn);
+          }
+
+          const sprintDetails = document.createElement("div");
+          sprintDetails.className = "sprint-details-grid";
+
+          if (selectedSprint) {
+            const nameControl = inputText(
+              selectedSprint.name || "",
+              "Nome sprint",
+              (value) => {
+                selectedSprint.name = value;
+              }
+            );
+            nameControl.addEventListener("blur", () => {
+              AppState.persist();
+              render();
+            });
+
+            const startControl = inputDate(
+              selectedSprint.start,
+              (value) => {
+                selectedSprint.start = value || null;
+              },
+              { readOnly: false }
+            );
+            startControl.addEventListener("blur", () => {
+              AppState.persist();
+              render();
+            });
+
+            const endControl = inputDate(
+              selectedSprint.end,
+              (value) => {
+                selectedSprint.end = value || null;
+              },
+              { readOnly: false }
+            );
+            endControl.addEventListener("blur", () => {
+              AppState.persist();
+              render();
+            });
+
+            sprintDetails.append(
+              labeledControl("Nome", nameControl),
+              labeledControl("Inizio", startControl),
+              labeledControl("Fine", endControl)
+            );
+          }
+
+          content.append(sprintStripWrapper, sprintActions);
+          if (selectedSprint) {
+            content.append(sprintDetails);
+          }
+
+          drawer.appendChild(content);
+          return drawer;
         }
 
         function render() {
@@ -2058,237 +2430,13 @@
         // =============================================================
         function renderShortTermGoals() {
           dom.view.innerHTML = "";
-
-          const ensured = ensureCurrentSprintId();
-          if (ensured.created) {
-            AppState.persist();
-          }
-          if (!selectedSprintId && ensured.id) {
-            updateSelectedSprint(ensured.id);
-          }
-
-          const sprints = Array.isArray(AppState.data.sprints)
-            ? AppState.data.sprints.slice()
-            : [];
-          const sortedSprints = sprints.sort((a, b) => {
-            const startA = a.start || "";
-            const startB = b.start || "";
-            if (startA && startB && startA !== startB) {
-              return startA.localeCompare(startB);
-            }
-            return (a.name || "").localeCompare(b.name || "");
+          const sprintContext = getSprintUiContext();
+          const { selectedSprint } = sprintContext;
+          const sprintDrawer = createSprintDrawer(sprintContext, {
+            startOpen: true,
+            label: "Gestione sprint",
+            syncShortTerm: true,
           });
-
-          if (
-            !sortedSprints.some((sprint) => sprint.id === selectedSprintId)
-          ) {
-            const fallbackId =
-              AppState.data.currentSprintId || sortedSprints[0]?.id || null;
-            if (fallbackId) {
-              updateSelectedSprint(fallbackId);
-            }
-          }
-
-          const selectedSprint =
-            sortedSprints.find((sprint) => sprint.id === selectedSprintId) ||
-            sortedSprints[0] ||
-            null;
-
-          const sprintStripWrapper = document.createElement("div");
-          sprintStripWrapper.className = "sprint-strip-wrapper";
-          const sprintStrip = document.createElement("div");
-          sprintStrip.className = "sprint-strip";
-
-          const selectedIndex = selectedSprint
-            ? sortedSprints.findIndex((s) => s.id === selectedSprint.id)
-            : -1;
-          const prevSprint =
-            selectedIndex > 0 ? sortedSprints[selectedIndex - 1] : null;
-          const nextSprint =
-            selectedIndex >= 0 && selectedIndex < sortedSprints.length - 1
-              ? sortedSprints[selectedIndex + 1]
-              : null;
-
-          const prevBtn = button("←", "sprint-nav", () => {
-            if (prevSprint) {
-              updateSelectedSprint(prevSprint.id, { rerenderShortTerm: true });
-            }
-          });
-          prevBtn.disabled = !prevSprint;
-
-          const nextBtn = button("→", "sprint-nav", () => {
-            if (nextSprint) {
-              updateSelectedSprint(nextSprint.id, { rerenderShortTerm: true });
-            }
-          });
-          nextBtn.disabled = !nextSprint;
-
-          sprintStripWrapper.append(prevBtn, sprintStrip, nextBtn);
-
-          if (sortedSprints.length) {
-            const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
-            const startIndex = Math.max(0, currentIndex - 3);
-            const endIndex = Math.min(
-              sortedSprints.length - 1,
-              currentIndex + 3
-            );
-            const hasHiddenBefore = startIndex > 0;
-            const hasHiddenAfter = endIndex < sortedSprints.length - 1;
-
-            if (hasHiddenBefore) {
-              const ellipsis = document.createElement("span");
-              ellipsis.className = "sprint-ellipsis";
-              ellipsis.textContent = "…";
-              sprintStrip.appendChild(ellipsis);
-            }
-
-            for (let idx = startIndex; idx <= endIndex; idx += 1) {
-              const sprint = sortedSprints[idx];
-              const pill = document.createElement("button");
-              pill.type = "button";
-              pill.className = `sprint-pill${
-                sprint.id === selectedSprintId ? " selected" : ""
-              }${
-                sprint.id === AppState.data.currentSprintId ? " current" : ""
-              }`;
-              const name = document.createElement("span");
-              name.className = "sprint-name";
-              name.textContent = sprint.name || "Sprint";
-              const dates = document.createElement("span");
-              dates.className = "sprint-dates";
-              dates.textContent = formatSprintRange(sprint);
-              pill.append(name, dates);
-              pill.addEventListener("click", () => {
-                updateSelectedSprint(sprint.id, { rerenderShortTerm: true });
-              });
-              sprintStrip.appendChild(pill);
-            }
-
-            if (hasHiddenAfter) {
-              const ellipsis = document.createElement("span");
-              ellipsis.className = "sprint-ellipsis";
-              ellipsis.textContent = "…";
-              sprintStrip.appendChild(ellipsis);
-            }
-          }
-
-          const sprintActions = document.createElement("div");
-          sprintActions.className = "controls";
-          sprintActions.append(
-            button("+ Sprint", "primary", () => {
-              const newSprint = createSprint(
-                `Sprint ${AppState.data.sprints.length + 1}`,
-                DateUtils.today(),
-                DateUtils.addDays(14)
-              );
-              AppState.data.sprints.push(newSprint);
-              AppState.data.currentSprintId = newSprint.id;
-              updateSelectedSprint(newSprint.id);
-              AppState.persist();
-              render();
-            })
-          );
-
-          if (
-            selectedSprint &&
-            AppState.data.currentSprintId !== selectedSprint.id
-          ) {
-            sprintActions.append(
-              button("Imposta come corrente", "", () => {
-                AppState.data.currentSprintId = selectedSprint.id;
-                AppState.persist();
-                render();
-              })
-            );
-          }
-
-          if (selectedSprint) {
-            const deleteSprintBtn = button("Elimina sprint", "", () => {
-              if (
-                (selectedSprint.st_goal_ids || []).length &&
-                !confirmDelete(
-                  "Lo sprint contiene obiettivi BT. Svuotarlo prima di eliminarlo?"
-                )
-              ) {
-                return;
-              }
-              if ((selectedSprint.st_goal_ids || []).length) {
-                alert(
-                  "Rimuovi gli obiettivi BT dallo sprint prima di eliminarlo."
-                );
-                return;
-              }
-              AppState.data.sprints = AppState.data.sprints.filter(
-                (candidate) => candidate.id !== selectedSprint.id
-              );
-              if (AppState.data.currentSprintId === selectedSprint.id) {
-                AppState.data.currentSprintId =
-                  AppState.data.sprints[0]?.id || null;
-              }
-              updateSelectedSprint(
-                AppState.data.currentSprintId || AppState.data.sprints[0]?.id || null
-              );
-              AppState.persist();
-              render();
-            });
-            if ((selectedSprint.st_goal_ids || []).length) {
-              deleteSprintBtn.disabled = true;
-              deleteSprintBtn.title =
-                "Sposta o elimina gli obiettivi BT prima di eliminare lo sprint.";
-            }
-            sprintActions.append(deleteSprintBtn);
-          }
-
-          const sprintDetails = document.createElement("div");
-          sprintDetails.style.display = "grid";
-          sprintDetails.style.gridTemplateColumns =
-            "repeat(auto-fit, minmax(180px, 1fr))";
-          sprintDetails.style.gap = "0.75rem";
-          sprintDetails.style.marginBottom = "0.5rem";
-
-          if (selectedSprint) {
-            const nameControl = inputText(
-              selectedSprint.name || "",
-              "Nome sprint",
-              (value) => {
-                selectedSprint.name = value;
-              }
-            );
-            nameControl.addEventListener("blur", () => {
-              AppState.persist();
-              render();
-            });
-
-            const startControl = inputDate(
-              selectedSprint.start,
-              (value) => {
-                selectedSprint.start = value || null;
-              },
-              { readOnly: false }
-            );
-            startControl.addEventListener("blur", () => {
-              AppState.persist();
-              render();
-            });
-
-            const endControl = inputDate(
-              selectedSprint.end,
-              (value) => {
-                selectedSprint.end = value || null;
-              },
-              { readOnly: false }
-            );
-            endControl.addEventListener("blur", () => {
-              AppState.persist();
-              render();
-            });
-
-            sprintDetails.append(
-              labeledControl("Nome", nameControl),
-              labeledControl("Inizio", startControl),
-              labeledControl("Fine", endControl)
-            );
-          }
 
           const rows = [];
           AppState.data.roles.forEach((role) =>
@@ -2544,13 +2692,7 @@
             })
           );
 
-          dom.view.append(
-            sprintStripWrapper,
-            sprintActions,
-            sprintDetails,
-            toolbar,
-            table
-          );
+          dom.view.append(sprintDrawer, toolbar, table);
         }
 
         // =============================================================
@@ -2558,6 +2700,11 @@
         // =============================================================
         function renderTasks() {
           dom.view.innerHTML = "";
+          const sprintContext = getSprintUiContext();
+          const sprintDrawer = createSprintDrawer(sprintContext, {
+            label: "Filtro sprint",
+            startOpen: false,
+          });
           const rows = getFilteredTaskRefs();
 
           const filtersBar = createTaskFiltersBar({
@@ -2838,7 +2985,7 @@
             })
           );
 
-          dom.view.append(filtersBar, toolbar, table);
+          dom.view.append(sprintDrawer, filtersBar, toolbar, table);
         }
 
         // =============================================================
@@ -2846,6 +2993,11 @@
         // =============================================================
         function renderDashboard() {
           dom.view.innerHTML = "";
+          const sprintContext = getSprintUiContext();
+          const sprintDrawer = createSprintDrawer(sprintContext, {
+            label: "Filtro sprint",
+            startOpen: false,
+          });
           const filtersBar = createTaskFiltersBar({
             onExport: () => exportTasksToCsv(getFilteredTaskRefs()),
             onImport: () => requestTaskCsvImport(),
@@ -2896,7 +3048,7 @@
             }
           });
 
-          dom.view.append(filtersBar, kanban);
+          dom.view.append(sprintDrawer, filtersBar, kanban);
         }
 
         function createKanbanColumn(state) {
