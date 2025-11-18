@@ -1484,6 +1484,7 @@
           const importanceValues = [];
           const sprintById = getSprintByIdMap();
           const fallbackSprintId = selectedSprintId || AppState.data.currentSprintId || null;
+          const refCalculations = [];
 
           refs.forEach(({ lt, st, task }) => {
             const due = resolveTaskDueDate(
@@ -1494,8 +1495,10 @@
               fallbackSprintId
             );
             const daysRemaining = computeDaysRemaining(due, today);
+            const importanceValue = resolveTaskImportance(lt, st, task);
             dayValues.push(daysRemaining);
-            importanceValues.push(resolveTaskImportance(lt, st, task));
+            importanceValues.push(importanceValue);
+            refCalculations.push({ due, daysRemaining, importanceValue });
           });
 
           const context = buildPriorityContext(
@@ -1514,6 +1517,8 @@
           }
 
           refs.forEach((ref, index) => {
+            const { due, daysRemaining, importanceValue } =
+              refCalculations[index] || {};
             const timePriority = context.timePriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
             const importancePriority =
               context.impPriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
@@ -1534,26 +1539,54 @@
               )
             );
 
+            const normalizedTime = Math.min(
+              1,
+              Math.max(
+                0,
+                (timePriority - PRIORITY_CONFIG.MIN_PRIORITY) / context.priorityRange
+              )
+            );
+
+            const normalizedImportance = Math.min(
+              1,
+              Math.max(
+                0,
+                (importancePriority - PRIORITY_CONFIG.MIN_PRIORITY) /
+                  context.priorityRange
+              )
+            );
+
             TaskMetricsCache.map.set(ref.task.id, {
               priority,
               quadrant,
               timeQuadrant,
               importanceQuadrant,
               priorityPercent,
-              normalizedTime: Math.min(
-                1,
-                Math.max(
-                  0,
-                  (timePriority - PRIORITY_CONFIG.MIN_PRIORITY) / context.priorityRange
-                )
-              ),
-              normalizedImportance: Math.min(
-                1,
-                Math.max(
-                  0,
-                  (importancePriority - PRIORITY_CONFIG.MIN_PRIORITY) / context.priorityRange
-                )
-              ),
+              timePriority,
+              importancePriority,
+              normalizedTime,
+              normalizedImportance,
+              dueDate: due || null,
+              daysRemaining,
+            });
+
+            logTaskMetricsCalculation(ref, {
+              due,
+              daysRemaining,
+              importanceValue,
+              timePriority,
+              importancePriority,
+              priority,
+              priorityPercent,
+              normalizedTime,
+              normalizedImportance,
+              timeQuadrant,
+              importanceQuadrant,
+              quadrant,
+              thresholds: {
+                time: context.timeThreshold,
+                importance: context.impThreshold,
+              },
             });
           });
 
@@ -1564,6 +1597,29 @@
             impThreshold: context.impThreshold,
           };
           TaskMetricsCache.dirty = false;
+        }
+
+        function logTaskMetricsCalculation(ref, details) {
+          const title = ref.task.title || "(Senza titolo)";
+          const header = `Calcolo priority/quadrante → Task ${ref.task.id} • ${title}`;
+          console.groupCollapsed(header);
+          console.log("Scadenza risolta:", details.due || "(nessuna)");
+          console.log("Giorni restanti:", details.daysRemaining);
+          console.log("Importanza effettiva:", details.importanceValue);
+          console.log("Priority tempo:", details.timePriority);
+          console.log("Priority importanza:", details.importancePriority);
+          console.log("Soglia tempo (asse TH/TL):", details.thresholds.time);
+          console.log("Soglia importanza (asse IH/IL):", details.thresholds.importance);
+          console.log("Quadranti tempo/importanza:", details.timeQuadrant, details.importanceQuadrant);
+          console.log("Quadrante finale:", details.quadrant);
+          console.log("Priority pesata:", details.priority, "(percentuale barra:",
+            `${Math.round(details.priorityPercent * 100)}%)`
+          );
+          console.log("Normalizzazioni grafico:", {
+            tempo: `${Math.round(details.normalizedTime * 100)}% TH`,
+            importanza: `${Math.round(details.normalizedImportance * 100)}% IH`,
+          });
+          console.groupEnd();
         }
 
         function getTaskMetrics(ref) {
@@ -3736,14 +3792,20 @@
 
           const chart = document.createElement("div");
           chart.className = "quadrant-chart";
+          const verticalAxis = createAxisLine("vertical");
+          const horizontalAxis = createAxisLine("horizontal");
           chart.append(
-            createAxisLine("vertical"),
-            createAxisLine("horizontal"),
+            verticalAxis,
+            horizontalAxis,
             createAxisLabel("TH", "th"),
             createAxisLabel("TL", "tl"),
             createAxisLabel("IH", "ih"),
             createAxisLabel("IL", "il")
           );
+
+          const thresholds = getQuadrantThresholdPercents();
+          verticalAxis.style.left = `${thresholds.time}%`;
+          horizontalAxis.style.top = `${thresholds.importance}%`;
 
           const tooltip = document.createElement("div");
           tooltip.className = "chart-tooltip";
@@ -3779,9 +3841,11 @@
               point.style.top = `${topPercent}%`;
 
               point.addEventListener("mouseenter", () => {
-                tooltip.textContent = `${ref.task.id} • ${
+                const baseTitle = `${ref.task.id} • ${
                   ref.task.title || "(Senza titolo)"
                 }`;
+                const quadrantDetails = `Tempo: ${metrics.timeQuadrant} | Importanza: ${metrics.importanceQuadrant}`;
+                tooltip.textContent = `${baseTitle} — ${quadrantDetails}`;
                 tooltip.style.left = `${leftPercent}%`;
                 tooltip.style.top = `${topPercent}%`;
                 tooltip.style.opacity = "1";
@@ -3809,6 +3873,40 @@
           label.className = `axis-label ${variant}`;
           label.textContent = text;
           return label;
+        }
+
+        function getQuadrantThresholdPercents() {
+          computeTaskMetricsCache();
+          const stats = TaskMetricsCache.stats || {};
+          const priorityMin =
+            typeof stats.priorityMin === "number"
+              ? stats.priorityMin
+              : PRIORITY_CONFIG.MIN_PRIORITY;
+          const priorityMax =
+            typeof stats.priorityMax === "number"
+              ? stats.priorityMax
+              : PRIORITY_CONFIG.MAX_PRIORITY;
+          const range = Math.max(1e-3, priorityMax - priorityMin);
+
+          const timeValue =
+            typeof stats.timeThreshold === "number"
+              ? stats.timeThreshold
+              : priorityMin + range / 2;
+          const importanceValue =
+            typeof stats.impThreshold === "number"
+              ? stats.impThreshold
+              : priorityMin + range / 2;
+
+          const normalize = (value) =>
+            Math.min(1, Math.max(0, (value - priorityMin) / range));
+
+          const timeNorm = normalize(timeValue);
+          const importanceNorm = normalize(importanceValue);
+
+          return {
+            time: Math.round((1 - timeNorm) * 100),
+            importance: Math.round((1 - importanceNorm) * 100),
+          };
         }
 
         function createKanbanColumn(state) {
