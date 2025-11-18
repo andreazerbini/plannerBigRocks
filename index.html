@@ -790,6 +790,7 @@
             due: datePlus(30),
             state: TASK_STATE_IDS.TO_DO,
             closed_on: null,
+            estimate_hours: 6,
           };
 
           shortTerm.tasks.push(task);
@@ -824,6 +825,7 @@
           if (!task || typeof task !== "object") return;
           task.state = getTaskStateId(task.state);
           task.closed_on = sanitizeIsoDate(task.closed_on);
+          task.estimate_hours = toHoursOrNull(task.estimate_hours);
         }
 
         function normalizeDomain(root) {
@@ -961,6 +963,35 @@
         function toImportanceOrNull(value) {
           if (value == null || value === "") return null;
           return toImportance(value, 1);
+        }
+
+        function toHoursOrNull(value) {
+          if (value == null) return null;
+          if (typeof value === "number") {
+            if (!Number.isFinite(value)) return null;
+            return Math.max(0, Math.round(value * 100) / 100);
+          }
+          const normalized = String(value).trim().replace(",", ".");
+          if (!normalized) return null;
+          const parsed = Number.parseFloat(normalized);
+          if (!Number.isFinite(parsed)) return null;
+          return Math.max(0, Math.round(parsed * 100) / 100);
+        }
+
+        function formatHours(value) {
+          if (value == null) return "-";
+          const rounded = Math.round(value * 100) / 100;
+          const hasDecimals = Math.abs(rounded % 1) > 1e-6;
+          return rounded.toLocaleString("it-IT", {
+            minimumFractionDigits: hasDecimals ? 1 : 0,
+            maximumFractionDigits: 2,
+          });
+        }
+
+        function serializeHours(value) {
+          if (value == null) return "";
+          const rounded = Math.round(value * 100) / 100;
+          return rounded.toString();
         }
 
         function formatSprintRange(sprint) {
@@ -1566,6 +1597,29 @@
           return input;
         }
 
+        function inputHours(value, onInput) {
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = "0";
+          input.step = "0.25";
+          input.inputMode = "decimal";
+          input.value = value ?? "";
+          input.addEventListener("input", () => {
+            onInput(input.value === "" ? null : toHoursOrNull(input.value));
+          });
+          input.addEventListener("blur", () => {
+            const normalized = toHoursOrNull(input.value);
+            if (normalized == null) {
+              input.value = "";
+              onInput(null);
+            } else {
+              input.value = normalized.toString();
+              onInput(normalized);
+            }
+          });
+          return input;
+        }
+
           function inputDate(value, onInput, { readOnly = false } = {}) {
               const input = document.createElement("input");
               input.type = "date";
@@ -1636,6 +1690,7 @@
           "Titolo",
           "Descrizione",
           "Importanza",
+          "Stima (ore)",
           "Scadenza",
           "Stato",
         ]);
@@ -1654,6 +1709,13 @@
           title: ["titolo", "title"],
           description: ["descrizione", "description"],
           importance: ["importanza", "importance"],
+          estimate: [
+            "stima",
+            "stima (ore)",
+            "ore stima",
+            "estimate",
+            "estimated hours",
+          ],
           due: ["scadenza", "due", "deadline", "data"],
           state: ["stato", "state"],
         });
@@ -1665,6 +1727,7 @@
           title: "Titolo",
           description: "Descrizione",
           importance: "Importanza",
+          estimate: "Stima (ore)",
           due: "Scadenza",
           state: "Stato",
         });
@@ -2147,6 +2210,9 @@
           columns.forEach((column, idx) => {
             const th = document.createElement("th");
             th.textContent = column.label;
+            if (column.tooltip) {
+              th.title = column.tooltip;
+            }
             if (column.key || column.sort) {
               th.classList.add("sortable");
               th.addEventListener("click", () => {
@@ -2888,7 +2954,8 @@
                 render: (row) => createTaskStateSelect(row.task),
               },
               {
-                label: "Importanza (ereditata se vuota)",
+                label: "I",
+                tooltip: "Importanza (ereditata se vuota)",
                 key: (row) =>
                   effectiveImportance(
                     row.task,
@@ -2912,7 +2979,27 @@
                 },
               },
               {
-                label: "Scadenza (ereditata se vuota)",
+                label: "Stima (h)",
+                tooltip: "Stima dell'attività in ore (decimali ammessi)",
+                key: (row) => row.task.estimate_hours ?? -1,
+                render: (row) => {
+                  const el = inputHours(row.task.estimate_hours, (value) => {
+                    row.task.estimate_hours = value;
+                  });
+                  const commit = () => {
+                    AppState.persist();
+                    render();
+                  };
+                  el.addEventListener("blur", commit);
+                  el.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter") el.blur();
+                  });
+                  return el;
+                },
+              },
+              {
+                label: "Scad.",
+                tooltip: "Scadenza (ereditata se vuota)",
                 key: (row) =>
                   effectiveDueDate(
                     row.task,
@@ -3231,10 +3318,17 @@
             effectiveImportance(st, lt.importance)
           );
           const due = effectiveDueDate(task, effectiveDueDate(st, lt.due));
+          const estimate = task.estimate_hours;
+          const formattedEstimate = formatHours(estimate);
           const meta = document.createElement("div");
           meta.className = "kanban-card-meta";
           meta.append(
             createBadge(`Imp: ${importance ?? "-"}`),
+            createBadge(
+              `Stima: ${formattedEstimate}${
+                formattedEstimate !== "-" ? " h" : ""
+              }`
+            ),
             createBadge(`Scadenza: ${due || "-"}`)
           );
 
@@ -3300,7 +3394,7 @@
           };
         }
 
-        function createTask(title, description, importance, due) {
+        function createTask(title, description, importance, due, estimateHours) {
           const task = {
             id: AppState.nextId(),
             title,
@@ -3309,6 +3403,7 @@
             due: due || null,
             state: DEFAULT_TASK_STATE,
             closed_on: null,
+            estimate_hours: toHoursOrNull(estimateHours),
           };
           normalizeTask(task);
           return task;
@@ -3328,6 +3423,7 @@
                 task.title || "",
                 task.description || "",
                 task.importance ?? "",
+                serializeHours(task.estimate_hours),
                 task.due || "",
                 getTaskStateId(task.state),
               ]
@@ -3397,6 +3493,7 @@
                 importance = parsedImportance;
               }
             }
+            const estimate = toHoursOrNull(normalizedRow[indexMap.estimate]);
             const due = sanitizeCsvDate(normalizedRow[indexMap.due]);
             const state = resolveTaskStateFromCsv(normalizedRow[indexMap.state]);
 
@@ -3404,7 +3501,7 @@
             const lt = ensureLongTermForImport(role, ltTitle, due);
             const st = ensureShortTermForImport(lt, stTitle, due);
 
-            const task = createTask(title, description, importance, due);
+            const task = createTask(title, description, importance, due, estimate);
             task.state = state;
             normalizeTask(task);
             clampChildToParent(task, st.due ? st : lt);
