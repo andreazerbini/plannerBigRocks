@@ -17,6 +17,7 @@ Aggiornamenti svolti:
 - Aggiunta la vista "Statistiche" con il pannello Quadranti: mostra i task dello sprint corrente su un piano tempo/importanza con tooltip e controllo fullscreen.
 - Le scadenze delle attività ereditano BT → LT → fine sprint quando mancanti, i tooltip del pannello Quadranti hanno margini visibili e i quadranti dinamici sono coperti da test JS standalone.
 - Nel pannello Quadranti gli assi seguono le soglie dinamiche TH/TL e IH/IL, i tooltip elencano anche i quadranti tempo/importanza e la console traccia passo-passo i calcoli di priority/quadrante per ogni task.
+- I quadranti della vista Statistiche hanno sfondi tenui e semitrasparenti, abbinati al colore dei badge Q1/Q2/Q3/Q4 e posizionati sotto assi, tooltip e puntini.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
