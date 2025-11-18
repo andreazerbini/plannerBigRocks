@@ -1593,6 +1593,8 @@
               importancePriority,
               normalizedTime,
               normalizedImportance,
+              timeThreshold: context.timeThreshold,
+              impThreshold: context.impThreshold,
               dueDate: due || null,
               daysRemaining,
             });
@@ -3802,6 +3804,11 @@
           const panel = document.createElement("article");
           panel.className = "panel";
 
+          const format3Sig = (value) => {
+            const num = Number(value);
+            return Number.isFinite(num) ? Number(num).toPrecision(3) : "-";
+          };
+
           const header = document.createElement("div");
           header.className = "panel-header";
           const title = document.createElement("h3");
@@ -3874,7 +3881,16 @@
                 const baseTitle = `${ref.task.id} • ${
                   ref.task.title || "(Senza titolo)"
                 }`;
-                const quadrantDetails = `Tempo: ${metrics.timeQuadrant} | Importanza: ${metrics.importanceQuadrant}`;
+                const timeValue = format3Sig(metrics.timePriority);
+                const impValue = format3Sig(metrics.importancePriority);
+                const timeThreshold = format3Sig(
+                  metrics.timeThreshold ?? TaskMetricsCache.stats?.timeThreshold
+                );
+                const impThreshold = format3Sig(
+                  metrics.impThreshold ?? TaskMetricsCache.stats?.impThreshold
+                );
+
+                const quadrantDetails = `Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`;
                 tooltip.textContent = `${baseTitle} — ${quadrantDetails}`;
                 tooltip.style.left = `${leftPercent}%`;
                 tooltip.style.top = `${topPercent}%`;
