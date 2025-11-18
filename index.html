@@ -514,6 +514,194 @@
         border-radius: 0.5rem;
       }
 
+      .priority-chip {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 110px;
+        padding: 0.25rem 0.45rem;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        background: rgba(15, 23, 42, 0.7);
+        overflow: hidden;
+      }
+
+      .priority-chip::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: var(--fill, 0%);
+        background: linear-gradient(90deg, #22c55e, #f97316, #ef4444);
+        opacity: 0.25;
+      }
+
+      .priority-chip strong {
+        position: relative;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .priority-chip small {
+        position: relative;
+        color: var(--muted);
+      }
+
+      .quadrant-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(18, 24, 38, 0.85);
+        font-size: 0.75rem;
+      }
+
+      .quadrant-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+      }
+
+      .quadrant-q1 {
+        background: #ef4444;
+      }
+
+      .quadrant-q2 {
+        background: #22c55e;
+      }
+
+      .quadrant-q3 {
+        background: #facc15;
+      }
+
+      .quadrant-q4 {
+        background: #9ca3af;
+      }
+
+      .panel-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1rem;
+      }
+
+      .panel {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 0.9rem;
+        background: rgba(18, 24, 38, 0.8);
+        padding: 0.75rem 0.75rem 1rem;
+        min-height: 360px;
+      }
+
+      .panel.fullscreen {
+        position: fixed;
+        inset: 0.75rem;
+        z-index: 30;
+        width: auto;
+        height: auto;
+        max-height: calc(100vh - 1.5rem);
+        overflow: auto;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .panel-actions {
+        display: flex;
+        gap: 0.35rem;
+      }
+
+      .quadrant-chart {
+        position: relative;
+        height: 320px;
+        border: 1px dashed var(--border);
+        border-radius: 0.75rem;
+        background: rgba(11, 15, 22, 0.6);
+        overflow: hidden;
+      }
+
+      .quadrant-chart .axis-line {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .quadrant-chart .axis-line.vertical {
+        width: 2px;
+        height: 100%;
+        left: 50%;
+        top: 0;
+      }
+
+      .quadrant-chart .axis-line.horizontal {
+        height: 2px;
+        width: 100%;
+        top: 50%;
+        left: 0;
+      }
+
+      .quadrant-chart .axis-label {
+        position: absolute;
+        font-size: 0.75rem;
+        color: var(--muted);
+        padding: 0.15rem 0.35rem;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid var(--border);
+        border-radius: 0.45rem;
+      }
+
+      .quadrant-chart .axis-label.th {
+        top: 8px;
+        left: 8px;
+      }
+
+      .quadrant-chart .axis-label.tl {
+        top: 8px;
+        right: 8px;
+      }
+
+      .quadrant-chart .axis-label.ih {
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .quadrant-chart .axis-label.il {
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .quadrant-chart .quadrant-point {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      .quadrant-chart .chart-tooltip {
+        position: absolute;
+        pointer-events: none;
+        padding: 0.35rem 0.45rem;
+        font-size: 0.8rem;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        white-space: nowrap;
+        transform: translate(-50%, -120%);
+        opacity: 0;
+        transition: opacity 0.1s ease;
+      }
+
       .title {
         font-weight: 700;
       }
@@ -693,7 +881,28 @@
           { id: "st", label: "Obiettivi a breve termine" },
           { id: "tasks", label: "Attività" },
           { id: "dash", label: "Dashboard" },
+          { id: "stats", label: "Statistiche" },
         ];
+
+        const PRIORITY_CONFIG = Object.freeze({
+          MIN_PRIORITY: 1,
+          MAX_PRIORITY: 5,
+          BALANCE_TIME_IMPORTANCE: 0.65,
+          QUADRANT_MODE: "dynamic", // "fixed" oppure "dynamic"
+        });
+
+        const TaskMetricsCache = {
+          dirty: true,
+          map: new Map(),
+          stats: {
+            priorityMin: PRIORITY_CONFIG.MIN_PRIORITY,
+            priorityMax: PRIORITY_CONFIG.MAX_PRIORITY,
+          },
+        };
+
+        function markTaskMetricsDirty() {
+          TaskMetricsCache.dirty = true;
+        }
 
         // =============================================================
         // Stato applicativo e persistence layer
@@ -702,6 +911,7 @@
           data: loadState(),
           currentFileHandle: null,
           persist() {
+            markTaskMetricsDirty();
             localStorage.setItem(
               STORAGE_KEYS.STATE,
               JSON.stringify(this.data)
@@ -1117,6 +1327,168 @@
           if (parentDue && child.due && child.due > parentDue) {
             child.due = parentDue;
           }
+        }
+
+        // =============================================================
+        // Calcolo Priority e Quadrante (con cache)
+        // =============================================================
+        function resolveTaskImportance(lt, st, task) {
+          const ltImportance = toImportance(lt.importance, 1);
+          const stImportance =
+            st.importance != null ? toImportance(st.importance, ltImportance) : ltImportance;
+          return task.importance != null
+            ? toImportance(task.importance, stImportance)
+            : stImportance;
+        }
+
+        function computeDaysRemaining(targetDate, today = new Date()) {
+          if (!targetDate) return 0;
+          const todayStart = new Date(today);
+          todayStart.setHours(0, 0, 0, 0);
+          const dueDate = new Date(targetDate);
+          if (Number.isNaN(dueDate.getTime())) return 0;
+          const diff = Math.floor((dueDate - todayStart) / (1000 * 60 * 60 * 24));
+          return Math.max(0, diff);
+        }
+
+        function computeTaskMetricsCache() {
+          if (!TaskMetricsCache.dirty) return;
+
+          const refs = getAllTaskRefs();
+          TaskMetricsCache.map.clear();
+
+          if (!refs.length) {
+            TaskMetricsCache.stats = {
+              priorityMin: PRIORITY_CONFIG.MIN_PRIORITY,
+              priorityMax: PRIORITY_CONFIG.MAX_PRIORITY,
+            };
+            TaskMetricsCache.dirty = false;
+            return;
+          }
+
+          const today = new Date();
+          const dayValues = [];
+          const importanceValues = [];
+
+          refs.forEach(({ lt, st, task }) => {
+            const due = effectiveDueDate(task, effectiveDueDate(st, lt.due));
+            const daysRemaining = computeDaysRemaining(due, today);
+            dayValues.push(daysRemaining);
+            importanceValues.push(resolveTaskImportance(lt, st, task));
+          });
+
+          const minDays = Math.min(...dayValues);
+          const maxDays = Math.max(...dayValues);
+          const minImp = Math.min(...importanceValues);
+          const maxImp = Math.max(...importanceValues);
+
+          const rangeDays = Math.max(1, maxDays - minDays);
+          const rangeImp = Math.max(1, maxImp - minImp);
+
+          const timePriorities = dayValues.map(
+            (value) =>
+              ((value - minDays) *
+                (PRIORITY_CONFIG.MIN_PRIORITY - PRIORITY_CONFIG.MAX_PRIORITY)) /
+                rangeDays +
+              PRIORITY_CONFIG.MAX_PRIORITY
+          );
+
+          const minTimePrio = Math.min(...timePriorities);
+          const maxTimePrio = Math.max(...timePriorities);
+          const avgTimePrio =
+            timePriorities.reduce((sum, value) => sum + value, 0) /
+            timePriorities.length;
+
+          const impPriorities = importanceValues.map(
+            (value) =>
+              ((value - minImp) *
+                (PRIORITY_CONFIG.MAX_PRIORITY - PRIORITY_CONFIG.MIN_PRIORITY)) /
+                rangeImp +
+              PRIORITY_CONFIG.MIN_PRIORITY
+          );
+
+          const minImpPrio = Math.min(...impPriorities);
+          const maxImpPrio = Math.max(...impPriorities);
+          const avgImpPrio =
+            impPriorities.reduce((sum, value) => sum + value, 0) /
+            impPriorities.length;
+
+          const useDynamic = PRIORITY_CONFIG.QUADRANT_MODE !== "fixed";
+          const timeThreshold = useDynamic
+            ? avgTimePrio / 2
+            : (maxTimePrio - minTimePrio) / 2;
+          const impThreshold = useDynamic
+            ? avgImpPrio / 2
+            : (maxImpPrio - minImpPrio) / 2;
+
+          const priorityRange = Math.max(
+            1e-3,
+            PRIORITY_CONFIG.MAX_PRIORITY - PRIORITY_CONFIG.MIN_PRIORITY
+          );
+
+          refs.forEach((ref, index) => {
+            const timePriority = timePriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
+            const importancePriority = impPriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
+
+            const timeQuadrant = timePriority - timeThreshold > 0 ? "TH" : "TL";
+            const importanceQuadrant =
+              importancePriority - impThreshold > 0 ? "IH" : "IL";
+
+            const quadrant =
+              importanceQuadrant === "IL"
+                ? timeQuadrant === "TH"
+                  ? "Q3"
+                  : "Q4"
+                : timeQuadrant === "TH"
+                ? "Q1"
+                : "Q2";
+
+            const priorityRaw =
+              timePriority * PRIORITY_CONFIG.BALANCE_TIME_IMPORTANCE +
+              importancePriority * (1 - PRIORITY_CONFIG.BALANCE_TIME_IMPORTANCE);
+            const priority = Math.round(priorityRaw * 100) / 100;
+
+            const priorityPercent = Math.min(
+              1,
+              Math.max(
+                0,
+                (priority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
+              )
+            );
+
+            TaskMetricsCache.map.set(ref.task.id, {
+              priority,
+              quadrant,
+              timeQuadrant,
+              importanceQuadrant,
+              priorityPercent,
+              normalizedTime: Math.min(
+                1,
+                Math.max(
+                  0,
+                  (timePriority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
+                )
+              ),
+              normalizedImportance: Math.min(
+                1,
+                Math.max(
+                  0,
+                  (importancePriority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
+                )
+              ),
+            });
+          });
+
+          TaskMetricsCache.stats = {
+            priorityMin: PRIORITY_CONFIG.MIN_PRIORITY,
+            priorityMax: PRIORITY_CONFIG.MAX_PRIORITY,
+          };
+          TaskMetricsCache.dirty = false;
+        }
+
+        function getTaskMetrics(ref) {
+          computeTaskMetricsCache();
+          return TaskMetricsCache.map.get(ref.task.id) || null;
         }
 
           function cascadeFromRole(role) {
@@ -1568,6 +1940,7 @@
           st: renderShortTermGoals,
           tasks: renderTasks,
           dash: renderDashboard,
+          stats: renderStatistics,
         };
 
         // =============================================================
@@ -2162,6 +2535,32 @@
           const badge = document.createElement("span");
           badge.className = "badge";
           badge.textContent = text;
+          return badge;
+        }
+
+        function createPriorityChip(metrics) {
+          const container = document.createElement("span");
+          container.className = "priority-chip";
+          const percent = metrics?.priorityPercent ?? 0;
+          container.style.setProperty("--fill", `${Math.round(percent * 100)}%`);
+
+          const value = document.createElement("strong");
+          value.textContent = metrics?.priority != null ? metrics.priority.toFixed(2) : "-";
+          const label = document.createElement("small");
+          label.textContent = "pri";
+
+          container.append(value, label);
+          return container;
+        }
+
+        function createQuadrantBadge(quadrant) {
+          const badge = document.createElement("span");
+          badge.className = "quadrant-badge";
+          const dot = document.createElement("span");
+          dot.className = `quadrant-dot quadrant-${(quadrant || "").toLowerCase()}`;
+          const label = document.createElement("span");
+          label.textContent = quadrant || "-";
+          badge.append(dot, label);
           return badge;
         }
 
@@ -2998,6 +3397,21 @@
                 },
               },
               {
+                label: "Priority",
+                tooltip: "Calcolo automatico su tempo/importanza",
+                key: (row) => getTaskMetrics(row)?.priority ?? 0,
+                render: (row) => createPriorityChip(getTaskMetrics(row)),
+              },
+              {
+                label: "Quadrante",
+                tooltip: "Quadrante Q1-Q4 calcolato",
+                key: (row) => getTaskMetrics(row)?.quadrant || "",
+                render: (row) => {
+                  const quadrant = getTaskMetrics(row)?.quadrant || "-";
+                  return createQuadrantBadge(quadrant);
+                },
+              },
+              {
                 label: "Scad.",
                 tooltip: "Scadenza (ereditata se vuota)",
                 key: (row) =>
@@ -3178,6 +3592,113 @@
           dom.view.append(sprintDrawer, filtersBar, kanban);
         }
 
+        // =============================================================
+        // Tab: Statistiche
+        // =============================================================
+        function renderStatistics() {
+          dom.view.innerHTML = "";
+          const sprintContext = getSprintUiContext();
+          const sprintDrawer = createSprintDrawer(sprintContext, {
+            label: "Gestione sprint",
+            startOpen: false,
+            stateKey: "stats",
+          });
+
+          const panels = document.createElement("div");
+          panels.className = "panel-grid";
+          panels.appendChild(createQuadrantsPanel());
+
+          dom.view.append(sprintDrawer, panels);
+        }
+
+        function createQuadrantsPanel() {
+          const panel = document.createElement("article");
+          panel.className = "panel";
+
+          const header = document.createElement("div");
+          header.className = "panel-header";
+          const title = document.createElement("h3");
+          title.textContent = "Quadranti";
+          const actions = document.createElement("div");
+          actions.className = "panel-actions";
+          const fullscreenBtn = button("Fullscreen", "", () => {
+            panel.classList.toggle("fullscreen");
+            fullscreenBtn.textContent = panel.classList.contains("fullscreen")
+              ? "Chiudi"
+              : "Fullscreen";
+          });
+          actions.append(fullscreenBtn);
+          header.append(title, actions);
+
+          const chart = document.createElement("div");
+          chart.className = "quadrant-chart";
+          chart.append(
+            createAxisLine("vertical"),
+            createAxisLine("horizontal"),
+            createAxisLabel("TH", "th"),
+            createAxisLabel("TL", "tl"),
+            createAxisLabel("IH", "ih"),
+            createAxisLabel("IL", "il")
+          );
+
+          const tooltip = document.createElement("div");
+          tooltip.className = "chart-tooltip";
+          chart.appendChild(tooltip);
+
+          const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
+          const sprintTasks = getAllTaskRefs().filter(
+            ({ st }) => st.sprint_id === sprintId
+          );
+
+          if (!sprintTasks.length) {
+            const empty = document.createElement("p");
+            empty.textContent = "Nessuna attività nello sprint selezionato.";
+            empty.style.color = "var(--muted)";
+            chart.appendChild(empty);
+          } else {
+            sprintTasks.forEach((ref) => {
+              const metrics = getTaskMetrics(ref);
+              if (!metrics) return;
+              const point = document.createElement("span");
+              point.className = "quadrant-point";
+              const stateConfig = getTaskStateConfig(ref.task.state);
+              point.style.background = stateConfig?.color || "#38bdf8";
+              point.style.left = `${Math.round((1 - metrics.normalizedTime) * 100)}%`;
+              point.style.top = `${Math.round((1 - metrics.normalizedImportance) * 100)}%`;
+
+              point.addEventListener("mouseenter", () => {
+                tooltip.textContent = `${ref.task.id} • ${
+                  ref.task.title || "(Senza titolo)"
+                }`;
+                tooltip.style.left = point.style.left;
+                tooltip.style.top = point.style.top;
+                tooltip.style.opacity = "1";
+              });
+              point.addEventListener("mouseleave", () => {
+                tooltip.style.opacity = "0";
+              });
+
+              chart.appendChild(point);
+            });
+          }
+
+          panel.append(header, chart);
+          return panel;
+        }
+
+        function createAxisLine(variant) {
+          const line = document.createElement("div");
+          line.className = `axis-line ${variant}`;
+          return line;
+        }
+
+        function createAxisLabel(text, variant) {
+          const label = document.createElement("span");
+          label.className = `axis-label ${variant}`;
+          label.textContent = text;
+          return label;
+        }
+
         function createKanbanColumn(state) {
           const column = document.createElement("section");
           column.className = "kanban-column";
@@ -3320,9 +3841,12 @@
           const due = effectiveDueDate(task, effectiveDueDate(st, lt.due));
           const estimate = task.estimate_hours;
           const formattedEstimate = formatHours(estimate);
+          const metrics = getTaskMetrics({ role, lt, st, task }) || {};
           const meta = document.createElement("div");
           meta.className = "kanban-card-meta";
           meta.append(
+            createPriorityChip(metrics),
+            createQuadrantBadge(metrics.quadrant),
             createBadge(`Imp: ${importance ?? "-"}`),
             createBadge(
               `Stima: ${formattedEstimate}${

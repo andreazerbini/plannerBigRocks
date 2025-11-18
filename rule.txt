@@ -13,6 +13,8 @@ Aggiornamenti svolti:
 - Nella vista "Attività" il pulsante "+ Attività" aggiunge i nuovi task all'obiettivo BT dello sprint selezionato, segnalando di creare prima un BT se lo sprint non ne contiene.
 - Strip sprint, controlli e dettagli (Nome/Inizio/Fine) sono raccolti nel drawer riutilizzabile "Gestione sprint", condiviso tra le viste Obiettivi BT, Attività e Dashboard: mantiene lo stato di apertura e si apre/chiude solo dalla relativa linguetta.
 - Ogni attività memorizza una stima in ore: è modificabile dalla vista "Attività" (con intestazioni compatte e tooltip) ed è visualizzata in Dashboard con un badge dedicato.
+- Calcolo live e in cache di priority e quadrante per ogni attività, configurabile da codice (scala minima/massima, bilanciamento e scelta quadrante fisso/dinamico), esposto come colonne non editabili in Attività, badge in Dashboard e usato nella nuova vista Statistiche.
+- Aggiunta la vista "Statistiche" con il pannello Quadranti: mostra i task dello sprint corrente su un piano tempo/importanza con tooltip e controllo fullscreen.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
@@ -41,7 +43,6 @@ Altre considerazioni:
 TODO:
 - Mobile first: ??? definire i dettagli da vedere per ciascuna vista
 - Aggiungere il "Mission" tab
-- Inserire il calcolo di priorità e quadrante
-- Inserire la vista di statistiche e performance (burndown chart, velocity, ecc)
+- Ampliare la vista di statistiche e performance (burndown chart, velocity, ecc)
 - Inserire la possibilità di
 - Archiviazione della settimana: da capire meglio come gestire la settimana e i task non raggiunti, oppure i task in backlog (copiarli in massa? o solo spostarli?)
