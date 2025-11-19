@@ -834,15 +834,21 @@
 
       .burndown-labels {
         position: absolute;
-        left: var(--burndown-padding-pct);
-        right: var(--burndown-padding-pct);
+        left: 0;
+        right: 0;
         bottom: -1.25rem;
-        display: grid;
-        gap: 0.2rem;
+        height: 1.25rem;
         font-size: 0.82rem;
         color: var(--muted);
-        text-align: center;
         pointer-events: none;
+      }
+
+      .burndown-x-label {
+        position: absolute;
+        bottom: 0;
+        transform: translateX(-50%);
+        text-align: center;
+        min-width: 2ch;
       }
 
       .burndown-y-labels {
@@ -4390,9 +4396,11 @@
 
           const labels = document.createElement("div");
           labels.className = "burndown-labels";
-          labels.style.gridTemplateColumns = `repeat(${timeline.length}, minmax(0, 1fr))`;
-          timeline.forEach((date) => {
+          timeline.forEach((date, idx) => {
             const span = document.createElement("span");
+            const [x] = toPoint(actual[idx], idx).split(",").map(Number);
+            span.className = "burndown-x-label";
+            span.style.left = `${(x / viewWidth) * 100}%`;
             span.textContent = formatDayOfMonth(date);
             span.title = formatShortDate(date);
             labels.appendChild(span);
