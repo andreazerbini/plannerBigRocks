@@ -16,9 +16,10 @@ Aggiornamenti svolti:
 - Calcolo live e in cache di priority e quadrante per ogni attività, configurabile da codice (scala minima/massima, bilanciamento e scelta quadrante fisso/dinamico), esposto come colonne non editabili in Attività, badge in Dashboard e usato nella nuova vista Statistiche.
 - Aggiunta la vista "Statistiche" con il pannello Quadranti: mostra i task dello sprint corrente su un piano tempo/importanza con tooltip e controllo fullscreen.
 - Le scadenze delle attività ereditano BT → LT → fine sprint quando mancanti, i tooltip del pannello Quadranti hanno margini visibili e i quadranti dinamici sono coperti da test JS standalone.
- - Nel pannello Quadranti gli assi seguono le soglie dinamiche TH/TL e IH/IL e la console traccia passo-passo i calcoli di priority/quadrante per ogni task.
+- Nel pannello Quadranti gli assi seguono le soglie dinamiche TH/TL e IH/IL e la console traccia passo-passo i calcoli di priority/quadrante per ogni task.
 - I quadranti della vista Statistiche hanno sfondi tenui e semitrasparenti, abbinati al colore dei badge Q1/Q2/Q3/Q4 e posizionati sotto assi, tooltip e puntini.
 - Nel pannello Quadranti il tooltip mostra i valori numerici (3 cifre significative) di tempo/importanza e delle soglie usate, al posto delle etichette TL/TH/IL/IH.
+- Il calcolo di priority/quadrante usa esclusivamente le attività dello sprint selezionato e la vista Statistiche mostra il pannello "Quadranti attività dello sprint" insieme al pannello "Quadranti obiettivi a lungo termine".
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.

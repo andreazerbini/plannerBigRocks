@@ -1494,7 +1494,11 @@
         function computeTaskMetricsCache() {
           if (!TaskMetricsCache.dirty) return;
 
-          const refs = getAllTaskRefs();
+          const sprintFilter = selectedSprintId || AppState.data.currentSprintId || null;
+          const allRefs = getAllTaskRefs();
+          const refs = sprintFilter
+            ? allRefs.filter(({ st }) => st.sprint_id === sprintFilter)
+            : allRefs;
           TaskMetricsCache.map.clear();
 
           if (!refs.length) {
@@ -1774,6 +1778,7 @@
             return;
           }
           selectedSprintId = normalized;
+          markTaskMetricsDirty();
           if (rerenderTasks) {
             rerenderTaskView();
           }
@@ -3795,24 +3800,153 @@
 
           const panels = document.createElement("div");
           panels.className = "panel-grid";
-          panels.appendChild(createQuadrantsPanel());
+          panels.appendChild(createTaskQuadrantsPanel());
+          panels.appendChild(createLongTermQuadrantsPanel());
 
           dom.view.append(sprintDrawer, panels);
         }
 
-        function createQuadrantsPanel() {
+        const format3Sig = (value) => {
+          const num = Number(value);
+          return Number.isFinite(num) ? Number(num).toPrecision(3) : "-";
+        };
+
+        function createTaskQuadrantsPanel() {
+          const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
+          const sprintTasks = getAllTaskRefs().filter(
+            ({ st }) => st.sprint_id === sprintId
+          );
+
+          const thresholds = getQuadrantThresholdPercents();
+          const points = sprintTasks
+            .map((ref) => {
+              const metrics = getTaskMetrics(ref);
+              if (!metrics) return null;
+              const stateConfig = getTaskStateConfig(ref.task.state);
+              const leftPercent = (1 - metrics.normalizedTime) * 100;
+              const topPercent = (1 - metrics.normalizedImportance) * 100;
+              const baseTitle = `${ref.task.id} • ${
+                ref.task.title || "(Senza titolo)"
+              }`;
+              const timeValue = format3Sig(metrics.timePriority);
+              const impValue = format3Sig(metrics.importancePriority);
+              const timeThreshold = format3Sig(
+                metrics.timeThreshold ?? TaskMetricsCache.stats?.timeThreshold
+              );
+              const impThreshold = format3Sig(
+                metrics.impThreshold ?? TaskMetricsCache.stats?.impThreshold
+              );
+
+              return {
+                color: stateConfig?.color || "#38bdf8",
+                leftPercent,
+                topPercent,
+                tooltip: `${baseTitle} — Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`,
+              };
+            })
+            .filter(Boolean);
+
+          return createQuadrantPanel({
+            title: "Quadranti attività dello sprint",
+            thresholds,
+            points,
+            emptyMessage: "Nessuna attività nello sprint selezionato.",
+          });
+        }
+
+        function buildLongTermQuadrantMetrics() {
+          const refs = [];
+          AppState.data.roles.forEach((role) =>
+            role.lt_goals.forEach((lt) => refs.push({ role, lt }))
+          );
+
+          if (!refs.length) {
+            return { thresholds: null, points: [] };
+          }
+
+          const today = new Date();
+          const dayValues = [];
+          const importanceValues = [];
+
+          refs.forEach(({ lt }) => {
+            dayValues.push(computeDaysRemaining(lt.due, today));
+            importanceValues.push(toImportance(lt.importance, 1));
+          });
+
+          const context = buildPriorityContext(
+            dayValues,
+            importanceValues,
+            PRIORITY_CONFIG
+          );
+
+          if (!context) {
+            return { thresholds: null, points: [] };
+          }
+
+          const stats = {
+            priorityMin: PRIORITY_CONFIG.MIN_PRIORITY,
+            priorityMax: PRIORITY_CONFIG.MAX_PRIORITY,
+            timeThreshold: context.timeThreshold,
+            impThreshold: context.impThreshold,
+          };
+
+          const priorityRange = context.priorityRange;
+          const points = refs.map((ref, index) => {
+            const timePriority =
+              context.timePriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
+            const importancePriority =
+              context.impPriorities[index] ?? PRIORITY_CONFIG.MIN_PRIORITY;
+            const normalizedTime = Math.min(
+              1,
+              Math.max(
+                0,
+                (timePriority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
+              )
+            );
+            const normalizedImportance = Math.min(
+              1,
+              Math.max(
+                0,
+                (importancePriority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
+              )
+            );
+            const baseTitle = `${ref.lt.id} • ${ref.lt.title || "(Senza titolo)"}`;
+            const timeValue = format3Sig(timePriority);
+            const impValue = format3Sig(importancePriority);
+            const timeThreshold = format3Sig(context.timeThreshold);
+            const impThreshold = format3Sig(context.impThreshold);
+
+            return {
+              color: "#6366f1",
+              leftPercent: (1 - normalizedTime) * 100,
+              topPercent: (1 - normalizedImportance) * 100,
+              tooltip: `${baseTitle} — Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`,
+            };
+          });
+
+          return { thresholds: stats, points };
+        }
+
+        function createLongTermQuadrantsPanel() {
+          const { thresholds, points } = buildLongTermQuadrantMetrics();
+          return createQuadrantPanel({
+            title: "Quadranti obiettivi a lungo termine",
+            thresholds: thresholds
+              ? getQuadrantThresholdPercents(thresholds)
+              : { time: 50, importance: 50 },
+            points,
+            emptyMessage: "Nessun obiettivo a lungo termine disponibile.",
+          });
+        }
+
+        function createQuadrantPanel({ title, thresholds, points, emptyMessage }) {
           const panel = document.createElement("article");
           panel.className = "panel";
 
-          const format3Sig = (value) => {
-            const num = Number(value);
-            return Number.isFinite(num) ? Number(num).toPrecision(3) : "-";
-          };
-
           const header = document.createElement("div");
           header.className = "panel-header";
-          const title = document.createElement("h3");
-          title.textContent = "Quadranti";
+          const heading = document.createElement("h3");
+          heading.textContent = title;
           const actions = document.createElement("div");
           actions.className = "panel-actions";
           const fullscreenBtn = button("Fullscreen", "", () => {
@@ -3822,12 +3956,12 @@
               : "Fullscreen";
           });
           actions.append(fullscreenBtn);
-          header.append(title, actions);
+          header.append(heading, actions);
 
           const chart = document.createElement("div");
           chart.className = "quadrant-chart";
-          const thresholds = getQuadrantThresholdPercents();
-          createQuadrantBackgrounds(thresholds).forEach((bg) =>
+          const axisThresholds = thresholds || { time: 50, importance: 50 };
+          createQuadrantBackgrounds(axisThresholds).forEach((bg) =>
             chart.appendChild(bg)
           );
           const verticalAxis = createAxisLine("vertical");
@@ -3841,66 +3975,41 @@
             createAxisLabel("IL", "il")
           );
 
-          verticalAxis.style.left = `${thresholds.time}%`;
-          horizontalAxis.style.top = `${thresholds.importance}%`;
+          verticalAxis.style.left = `${axisThresholds.time}%`;
+          horizontalAxis.style.top = `${axisThresholds.importance}%`;
 
           const tooltip = document.createElement("div");
           tooltip.className = "chart-tooltip";
           chart.appendChild(tooltip);
 
-          const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
-          const sprintTasks = getAllTaskRefs().filter(
-            ({ st }) => st.sprint_id === sprintId
-          );
-
-          if (!sprintTasks.length) {
+          if (!points.length) {
             const empty = document.createElement("p");
-            empty.textContent = "Nessuna attività nello sprint selezionato.";
+            empty.textContent = emptyMessage;
             empty.style.color = "var(--muted)";
             chart.appendChild(empty);
           } else {
             const clampPercent = (value) =>
               Math.min(94, Math.max(6, Math.round(value)));
-            sprintTasks.forEach((ref) => {
-              const metrics = getTaskMetrics(ref);
-              if (!metrics) return;
-              const point = document.createElement("span");
-              point.className = "quadrant-point";
-              const stateConfig = getTaskStateConfig(ref.task.state);
-              point.style.background = stateConfig?.color || "#38bdf8";
-              const leftPercent = clampPercent(
-                (1 - metrics.normalizedTime) * 100
-              );
-              const topPercent = clampPercent(
-                (1 - metrics.normalizedImportance) * 100
-              );
-              point.style.left = `${leftPercent}%`;
-              point.style.top = `${topPercent}%`;
+            points.forEach((point) => {
+              const dot = document.createElement("span");
+              dot.className = "quadrant-point";
+              dot.style.background = point.color;
+              const left = clampPercent(point.leftPercent);
+              const top = clampPercent(point.topPercent);
+              dot.style.left = `${left}%`;
+              dot.style.top = `${top}%`;
 
-              point.addEventListener("mouseenter", () => {
-                const baseTitle = `${ref.task.id} • ${
-                  ref.task.title || "(Senza titolo)"
-                }`;
-                const timeValue = format3Sig(metrics.timePriority);
-                const impValue = format3Sig(metrics.importancePriority);
-                const timeThreshold = format3Sig(
-                  metrics.timeThreshold ?? TaskMetricsCache.stats?.timeThreshold
-                );
-                const impThreshold = format3Sig(
-                  metrics.impThreshold ?? TaskMetricsCache.stats?.impThreshold
-                );
-
-                const quadrantDetails = `Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`;
-                tooltip.textContent = `${baseTitle} — ${quadrantDetails}`;
-                tooltip.style.left = `${leftPercent}%`;
-                tooltip.style.top = `${topPercent}%`;
+              dot.addEventListener("mouseenter", () => {
+                tooltip.textContent = point.tooltip;
+                tooltip.style.left = `${left}%`;
+                tooltip.style.top = `${top}%`;
                 tooltip.style.opacity = "1";
               });
-              point.addEventListener("mouseleave", () => {
+              dot.addEventListener("mouseleave", () => {
                 tooltip.style.opacity = "0";
               });
 
-              chart.appendChild(point);
+              chart.appendChild(dot);
             });
           }
 
@@ -3972,9 +4081,11 @@
           });
         }
 
-        function getQuadrantThresholdPercents() {
-          computeTaskMetricsCache();
-          const stats = TaskMetricsCache.stats || {};
+        function getQuadrantThresholdPercents(statsOverride = null) {
+          if (!statsOverride) {
+            computeTaskMetricsCache();
+          }
+          const stats = statsOverride || TaskMetricsCache.stats || {};
           const priorityMin =
             typeof stats.priorityMin === "number"
               ? stats.priorityMin
