@@ -216,14 +216,22 @@
       }
 
       .drawer {
+        position: relative;
         border: 1px solid var(--border);
         border-radius: 0.9rem;
         background: rgba(18, 24, 38, 0.7);
         overflow: hidden;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
       }
 
       .drawer + .drawer {
         margin-top: 0.75rem;
+      }
+
+      .sprint-drawer:hover,
+      .sprint-drawer:focus-within {
+        border-color: rgba(94, 234, 212, 0.45);
+        box-shadow: 0 0 0 2px rgba(94, 234, 212, 0.25);
       }
 
       .drawer-toggle {
@@ -931,6 +939,8 @@
         function markTaskMetricsDirty() {
           TaskMetricsCache.dirty = true;
         }
+
+        const TableSortState = new Map();
 
         // =============================================================
         // Stato applicativo e persistence layer
@@ -2772,7 +2782,11 @@
           return window.confirm(message || "Sei sicuro? Questa azione è irreversibile.");
         }
 
-        function makeTable(columns, rows) {
+        function makeTable(columns, rows, options = {}) {
+          const sortStateKey =
+            typeof options.sortKey === "string" && options.sortKey.trim()
+              ? options.sortKey.trim()
+              : null;
           const wrapper = document.createElement("div");
           wrapper.style.overflowX = "auto";
 
@@ -2782,6 +2796,20 @@
 
           let sortIndex = -1;
           let sortDir = 1;
+
+          if (sortStateKey && TableSortState.has(sortStateKey)) {
+            const stored = TableSortState.get(sortStateKey);
+            if (
+              stored &&
+              typeof stored.index === "number" &&
+              stored.index >= 0 &&
+              stored.index < columns.length &&
+              (columns[stored.index]?.key || columns[stored.index]?.sort)
+            ) {
+              sortIndex = stored.index;
+              sortDir = stored.dir === -1 ? -1 : 1;
+            }
+          }
 
           function defaultComparator(a, b) {
             if (a == null && b == null) return 0;
@@ -2804,6 +2832,27 @@
             rows.sort((a, b) => sortDir * comparator(a, b));
           }
 
+          function persistSortState() {
+            if (!sortStateKey) return;
+            if (sortIndex < 0) {
+              TableSortState.delete(sortStateKey);
+            } else {
+              TableSortState.set(sortStateKey, {
+                index: sortIndex,
+                dir: sortDir,
+              });
+            }
+          }
+
+          function syncSortIndicators() {
+            [...headerRow.children].forEach((el, headerIdx) => {
+              el.classList.remove("asc", "desc");
+              if (headerIdx === sortIndex) {
+                el.classList.add(sortDir === 1 ? "asc" : "desc");
+              }
+            });
+          }
+
           columns.forEach((column, idx) => {
             const th = document.createElement("th");
             th.textContent = column.label;
@@ -2819,14 +2868,8 @@
                   sortIndex = idx;
                   sortDir = 1;
                 }
-
-                [...headerRow.children].forEach((el, headerIdx) => {
-                  el.classList.remove("asc", "desc");
-                  if (headerIdx === sortIndex) {
-                    el.classList.add(sortDir === 1 ? "asc" : "desc");
-                  }
-                });
-
+                syncSortIndicators();
+                persistSortState();
                 applySort();
                 renderBody();
               });
@@ -2852,7 +2895,9 @@
             });
           }
 
+          syncSortIndicators();
           applySort();
+          persistSortState();
           renderBody();
 
           table.appendChild(tbody);
@@ -2931,7 +2976,8 @@
                 },
               },
             ],
-            rows
+            rows,
+            { sortKey: "roles-table" }
           );
 
           const toolbar = document.createElement("div");
@@ -3098,7 +3144,8 @@
                 },
               },
             ],
-            rows
+            rows,
+            { sortKey: "lt-table" }
           );
 
           const toolbar = document.createElement("div");
@@ -3355,7 +3402,8 @@
                 },
               },
             ],
-            rows
+            rows,
+            { sortKey: "st-table" }
           );
 
           const toolbar = document.createElement("div");
@@ -3665,7 +3713,8 @@
                 },
               },
             ],
-            rows
+            rows,
+            { sortKey: "tasks-table" }
           );
 
           const toolbar = document.createElement("div");

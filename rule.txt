@@ -20,6 +20,8 @@ Aggiornamenti svolti:
 - I quadranti della vista Statistiche hanno sfondi tenui e semitrasparenti, abbinati al colore dei badge Q1/Q2/Q3/Q4 e posizionati sotto assi, tooltip e puntini.
 - Nel pannello Quadranti il tooltip mostra i valori numerici (3 cifre significative) di tempo/importanza e delle soglie usate, al posto delle etichette TL/TH/IL/IH.
 - Il calcolo di priority/quadrante usa esclusivamente le attività dello sprint selezionato e la vista Statistiche mostra il pannello "Quadranti attività dello sprint" insieme al pannello "Quadranti obiettivi a lungo termine".
+- Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
+- Lo sprint drawer evidenzia il bordo al passaggio del mouse senza spostare il layout sottostante.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
