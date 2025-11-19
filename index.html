@@ -590,8 +590,9 @@
 
       .panel-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
         gap: 1rem;
+        width: 100%;
       }
 
       .panel {
@@ -610,7 +611,13 @@
         width: auto;
         height: auto;
         max-height: calc(100vh - 1.5rem);
+        max-width: none;
         overflow: auto;
+      }
+
+      .panel.fullscreen .quadrant-chart,
+      .panel.fullscreen .burndown-chart {
+        height: min(82vh, 820px);
       }
 
       .panel-header {
@@ -819,11 +826,12 @@
       }
 
       .burndown-labels {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 0.35rem;
-        font-size: 0.85rem;
+        display: grid;
+        gap: 0.2rem;
+        margin-top: 0.4rem;
+        font-size: 0.82rem;
         color: var(--muted);
+        text-align: center;
       }
 
       .burndown-legend {
@@ -4138,7 +4146,7 @@
           }
 
           const totalEffort = sprintTasks.reduce((sum, { task }) => {
-            return sum + (task.estimate_hours || 0);
+            return sum + getTaskEffortHours(task);
           }, 0);
 
           if (totalEffort <= 0) {
@@ -4206,8 +4214,7 @@
           refs.forEach(({ task }) => {
             const stateId = getTaskStateId(task.state);
             if (!CLOSING_TASK_STATES.has(stateId)) return;
-            const effort = task.estimate_hours || 0;
-            if (!effort) return;
+            const effort = getTaskEffortHours(task);
             const closedOn = clampIsoDate(task.closed_on, start, end) || end;
             const current = burnsByDate.get(closedOn) || 0;
             burnsByDate.set(closedOn, current + effort);
@@ -4326,10 +4333,13 @@
 
           const labels = document.createElement("div");
           labels.className = "burndown-labels";
-          labels.append(
-            document.createTextNode(formatShortDate(timeline[0])),
-            document.createTextNode(formatShortDate(timeline[timeline.length - 1]))
-          );
+          labels.style.gridTemplateColumns = `repeat(${timeline.length}, minmax(0, 1fr))`;
+          timeline.forEach((date) => {
+            const span = document.createElement("span");
+            span.textContent = formatDayOfMonth(date);
+            span.title = formatShortDate(date);
+            labels.appendChild(span);
+          });
           chart.appendChild(labels);
 
           return chart;
@@ -4385,6 +4395,23 @@
 
           container.append(totalPill, burnedPill, remainingPill, windowPill);
           return container;
+        }
+
+        function getTaskEffortHours(task) {
+          const rawEffort = Number(task?.estimate_hours);
+          if (!Number.isFinite(rawEffort) || rawEffort <= 0) return 1;
+          return rawEffort;
+        }
+
+        function formatDayOfMonth(value) {
+          try {
+            const parsed = new Date(value);
+            const day = parsed.getDate();
+            if (Number.isNaN(day)) return value;
+            return String(day).padStart(2, "0");
+          } catch (err) {
+            return value;
+          }
         }
 
         function formatShortDate(value) {
