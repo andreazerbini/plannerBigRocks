@@ -785,7 +785,14 @@
         border: 1px dashed var(--border);
         border-radius: 0.75rem;
         background: rgba(11, 15, 22, 0.6);
-        padding: 0.75rem;
+        padding: 0.75rem 0.75rem 2.1rem;
+        --burndown-padding-pct: 10%;
+      }
+
+      .burndown-plot-area {
+        position: relative;
+        width: 100%;
+        height: 100%;
       }
 
       .burndown-chart svg {
@@ -826,12 +833,35 @@
       }
 
       .burndown-labels {
+        position: absolute;
+        left: var(--burndown-padding-pct);
+        right: var(--burndown-padding-pct);
+        bottom: -1.25rem;
         display: grid;
         gap: 0.2rem;
-        margin-top: 0.4rem;
         font-size: 0.82rem;
         color: var(--muted);
         text-align: center;
+        pointer-events: none;
+      }
+
+      .burndown-y-labels {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: var(--burndown-padding-pct);
+        width: max-content;
+        transform: translateX(-70%);
+        font-size: 0.82rem;
+        color: var(--muted);
+        pointer-events: none;
+      }
+
+      .burndown-y-label {
+        position: absolute;
+        left: 0;
+        transform: translateY(-50%);
+        white-space: nowrap;
       }
 
       .burndown-legend {
@@ -4246,6 +4276,8 @@
           const viewWidth = 100;
           const viewHeight = 70;
           const padding = 10;
+          const paddingPercent = (padding / viewWidth) * 100;
+          chart.style.setProperty("--burndown-padding-pct", `${paddingPercent}%`);
           const innerWidth = viewWidth - padding * 2;
           const innerHeight = viewHeight - padding * 2;
           svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
@@ -4263,6 +4295,9 @@
             const y = padding + (1 - clampedRatio) * innerHeight;
             return `${x},${y}`;
           };
+
+          const plotArea = document.createElement("div");
+          plotArea.className = "burndown-plot-area";
 
           for (let i = 0; i <= 4; i += 1) {
             const y = padding + (innerHeight / 4) * i;
@@ -4329,7 +4364,29 @@
             svg.appendChild(circle);
           });
 
-          chart.appendChild(svg);
+          plotArea.appendChild(svg);
+
+          const yLabels = document.createElement("div");
+          yLabels.className = "burndown-y-labels";
+          const seenEfforts = new Set();
+          const effortRows = [];
+          actual.forEach((entry, idx) => {
+            const key = `${entry.remaining}`;
+            if (seenEfforts.has(key)) return;
+            seenEfforts.add(key);
+            const [, y] = toPoint(entry, idx).split(",").map(Number);
+            effortRows.push({ value: entry.remaining, y });
+          });
+          effortRows
+            .sort((a, b) => a.y - b.y)
+            .forEach((row) => {
+              const label = document.createElement("span");
+              label.className = "burndown-y-label";
+              label.textContent = `${formatHours(row.value)} h`;
+              label.style.top = `${(row.y / viewHeight) * 100}%`;
+              yLabels.appendChild(label);
+            });
+          plotArea.appendChild(yLabels);
 
           const labels = document.createElement("div");
           labels.className = "burndown-labels";
@@ -4340,7 +4397,9 @@
             span.title = formatShortDate(date);
             labels.appendChild(span);
           });
-          chart.appendChild(labels);
+          plotArea.appendChild(labels);
+
+          chart.appendChild(plotArea);
 
           return chart;
         }

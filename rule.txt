@@ -25,7 +25,7 @@ Aggiornamenti svolti:
 - Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
  - La vista Statistiche aggiorna i quadranti al cambio sprint e mostra tooltip centrati (id • titolo su due righe) con valori tempo/importanza, mantenendo etichette/soglie TH/TL/IH/IL all'interno del pannello e a ridosso del grafico con i valori numerici accanto.
  - Le etichette IH/IL/TH/TL sono adagiate lungo il bordo del grafico (IH in alto a sinistra, IL in basso a sinistra, TH in basso a sinistra, TL in basso a destra) condividendo colonna/riga con le soglie mostrate a 3 cifre significative.
- - La vista Statistiche include un burndown chart dello sprint corrente basato sulle stime delle attività (default 1h se mancano), con andamento giornaliero (giorno del mese in ascissa), compatibile con i filtri e con il controllo fullscreen.
+- La vista Statistiche include un burndown chart dello sprint corrente basato sulle stime delle attività (default 1h se mancano), con andamento giornaliero (giorno del mese in ascissa), etichette di ascissa e ordinata allineate ai punti e supporto fullscreen.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
