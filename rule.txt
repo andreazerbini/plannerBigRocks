@@ -7,6 +7,7 @@ Aggiornamenti svolti:
 - L'integrazione Google Drive salva e apre esclusivamente dalla cartella "Kanban_Covey_BigRocks" (creata automaticamente se assente).
 - Ogni salvataggio su Google Drive genera un nuovo file `kanban_covey_bigrocks_aaaaMMgg_hhmm_ss_ccc.json`, lasciando le versioni precedenti intatte.
 - Le viste "Attività" e "Dashboard" includono filtri aggiuntivi per Ruolo, obiettivi LT e BT.
+- I filtri attività (con azioni di export/import CSV) sono raccolti nel drawer "Filtri e azioni", aperto di default e condiviso tra Dashboard, Attività e Statistiche.
 - Il dominio ora memorizza le date di raggiungimento effettivo (LT/BT) e di chiusura task, organizzando i BT in sprint con periodo e sprint corrente.
 - La vista "Obiettivi a breve termine" espone una striscia di sprint centrata con frecce di navigazione, evidenzia lo sprint corrente e mantiene sincronizzati i filtri di Attività e Dashboard sullo sprint selezionato.
 - La strip degli sprint occupa l'intera larghezza disponibile, mantenendo stabile il layout e visualizzando le ellissi quando sono presenti sprint non visibili.
@@ -20,6 +21,7 @@ Aggiornamenti svolti:
 - I quadranti della vista Statistiche hanno sfondi tenui e semitrasparenti, abbinati al colore dei badge Q1/Q2/Q3/Q4 e posizionati sotto assi, tooltip e puntini.
 - Nel pannello Quadranti il tooltip mostra i valori numerici (3 cifre significative) di tempo/importanza e delle soglie usate, al posto delle etichette TL/TH/IL/IH.
 - Il calcolo di priority/quadrante usa esclusivamente le attività dello sprint selezionato e la vista Statistiche mostra il pannello "Quadranti attività dello sprint" insieme al pannello "Quadranti obiettivi a lungo termine".
+- La vista Statistiche applica i filtri delle attività anche ai quadranti dello sprint, mantenendo coerente l'insieme di task visualizzati con Attività e Dashboard.
 - Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
  - La vista Statistiche aggiorna i quadranti al cambio sprint e mostra tooltip centrati (id • titolo su due righe) con valori tempo/importanza, mantenendo etichette/soglie TH/TL/IH/IL all'interno del pannello e a ridosso del grafico con i valori numerici accanto.
  - Le etichette IH/IL/TH/TL sono adagiate lungo il bordo del grafico (IH in alto a sinistra, IL in basso a sinistra, TH in basso a sinistra, TL in basso a destra) condividendo colonna/riga con le soglie mostrate a 3 cifre significative.

@@ -1794,6 +1794,12 @@
           dash: false,
         };
 
+        const filtersDrawerOpenState = {
+          tasks: true,
+          dash: true,
+          stats: true,
+        };
+
         function getSprintDrawerOpenState(key, fallback) {
           if (!key) return fallback;
           if (!Object.prototype.hasOwnProperty.call(sprintDrawerOpenState, key)) {
@@ -1807,6 +1813,21 @@
           sprintDrawerOpenState[key] = Boolean(value);
         }
 
+        function getFiltersDrawerOpenState(key, fallback) {
+          if (!key) return fallback;
+          if (
+            !Object.prototype.hasOwnProperty.call(filtersDrawerOpenState, key)
+          ) {
+            filtersDrawerOpenState[key] = fallback;
+          }
+          return filtersDrawerOpenState[key];
+        }
+
+        function setFiltersDrawerOpenState(key, value) {
+          if (!key) return;
+          filtersDrawerOpenState[key] = Boolean(value);
+        }
+
         let selectedSprintId = AppState.data.currentSprintId || null;
 
         function updateSelectedSprint(
@@ -1818,21 +1839,21 @@
           } = {}
         ) {
           const normalized = nextId != null ? String(nextId) : null;
-          if (normalized === selectedSprintId) {
+            if (normalized === selectedSprintId) {
+              if (rerenderShortTerm) {
+                render();
+              }
+              return;
+            }
+            selectedSprintId = normalized;
+            markTaskMetricsDirty();
+            if (rerenderTasks) {
+              rerenderFilterViews();
+            }
             if (rerenderShortTerm) {
               render();
             }
-            return;
-          }
-          selectedSprintId = normalized;
-          markTaskMetricsDirty();
-          if (rerenderTasks) {
-            rerenderTaskView();
-          }
-          if (rerenderShortTerm) {
-            render();
-          }
-          if (rerenderStats) {
+            if (rerenderStats) {
             render();
           }
         }
@@ -2479,14 +2500,16 @@
           if (Object.prototype.hasOwnProperty.call(patch, "search")) {
             taskSearchDraft = TaskFilters.search;
           }
-          rerenderTaskView();
+          rerenderFilterViews();
         }
 
-        function rerenderTaskView() {
+        function rerenderFilterViews() {
           if (activeTab === "tasks") {
             renderTasks();
           } else if (activeTab === "dash") {
             renderDashboard();
+          } else if (activeTab === "stats") {
+            renderStatistics();
           }
         }
 
@@ -2709,6 +2732,64 @@
           return container;
         }
 
+        function createFiltersDrawer({
+          onExport,
+          onImport,
+          startOpen = true,
+          stateKey = null,
+        } = {}) {
+          const drawer = document.createElement("section");
+          drawer.className = "drawer filters-drawer";
+          const shouldStartOpen = stateKey
+            ? getFiltersDrawerOpenState(stateKey, startOpen)
+            : startOpen;
+          if (shouldStartOpen) {
+            drawer.classList.add("open");
+          }
+
+          if (stateKey) {
+            setFiltersDrawerOpenState(stateKey, shouldStartOpen);
+          }
+
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "drawer-toggle";
+          const toggleLabel = document.createElement("span");
+          toggleLabel.textContent = "Filtri e azioni";
+          const toggleIcon = document.createElement("span");
+          toggleIcon.className = "drawer-toggle-icon";
+          toggle.append(toggleLabel, toggleIcon);
+
+          const syncToggleState = () => {
+            const isOpen = drawer.classList.contains("open");
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            toggleIcon.textContent = isOpen ? "▴" : "▾";
+          };
+
+          toggle.addEventListener("click", () => {
+            drawer.classList.toggle("open");
+            if (stateKey) {
+              setFiltersDrawerOpenState(
+                stateKey,
+                drawer.classList.contains("open")
+              );
+            }
+            syncToggleState();
+          });
+
+          drawer.appendChild(toggle);
+          syncToggleState();
+
+          const content = document.createElement("div");
+          content.className = "drawer-content";
+          content.appendChild(
+            createTaskFiltersBar({ onExport: () => onExport?.(), onImport })
+          );
+
+          drawer.appendChild(content);
+          return drawer;
+        }
+
         function createFilterField(label, control) {
           const wrapper = document.createElement("label");
           wrapper.className = "filter-field";
@@ -2762,13 +2843,13 @@
               updateTaskStateSelectStyle(select);
               return;
             }
-            select.value = getTaskStateId(task.state);
-            updateTaskStateSelectStyle(select);
-            AppState.persist();
-            rerenderTaskView();
-          });
-          return select;
-        }
+              select.value = getTaskStateId(task.state);
+              updateTaskStateSelectStyle(select);
+              AppState.persist();
+              rerenderFilterViews();
+            });
+            return select;
+          }
 
         function updateTaskStateSelectStyle(select) {
           const config = getTaskStateConfig(select.value);
@@ -3497,9 +3578,10 @@
           });
           const rows = getFilteredTaskRefs();
 
-          const filtersBar = createTaskFiltersBar({
+          const filtersDrawer = createFiltersDrawer({
             onExport: () => exportTasksToCsv(getFilteredTaskRefs()),
             onImport: () => requestTaskCsvImport(),
+            stateKey: "tasks",
           });
 
           const table = makeTable(
@@ -3808,7 +3890,7 @@
             })
           );
 
-          dom.view.append(sprintDrawer, filtersBar, toolbar, table);
+          dom.view.append(sprintDrawer, filtersDrawer, toolbar, table);
         }
 
         // =============================================================
@@ -3822,9 +3904,10 @@
             startOpen: false,
             stateKey: "dash",
           });
-          const filtersBar = createTaskFiltersBar({
+          const filtersDrawer = createFiltersDrawer({
             onExport: () => exportTasksToCsv(getFilteredTaskRefs()),
             onImport: () => requestTaskCsvImport(),
+            stateKey: "dash",
           });
           const kanban = document.createElement("div");
           kanban.className = "kanban";
@@ -3872,7 +3955,7 @@
             }
           });
 
-          dom.view.append(sprintDrawer, filtersBar, kanban);
+          dom.view.append(sprintDrawer, filtersDrawer, kanban);
         }
 
         // =============================================================
@@ -3886,13 +3969,18 @@
             startOpen: false,
             stateKey: "stats",
           });
+          const filtersDrawer = createFiltersDrawer({
+            onExport: () => exportTasksToCsv(getFilteredTaskRefs()),
+            onImport: () => requestTaskCsvImport(),
+            stateKey: "stats",
+          });
 
           const panels = document.createElement("div");
           panels.className = "panel-grid";
           panels.appendChild(createTaskQuadrantsPanel());
           panels.appendChild(createLongTermQuadrantsPanel());
 
-          dom.view.append(sprintDrawer, panels);
+          dom.view.append(sprintDrawer, filtersDrawer, panels);
         }
 
         const format3Sig = (value) => {
@@ -3902,7 +3990,7 @@
 
         function createTaskQuadrantsPanel() {
           const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
-          const sprintTasks = getAllTaskRefs().filter(
+          const sprintTasks = getFilteredTaskRefs().filter(
             ({ st }) => st.sprint_id === sprintId
           );
 
