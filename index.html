@@ -689,26 +689,44 @@
         z-index: 4;
       }
 
-      .quadrant-chart .axis-label.th {
-        top: 8px;
-        left: 8px;
+      .quadrant-chart .axis-tags {
+        position: absolute;
+        display: flex;
+        gap: 0.35rem;
+        align-items: center;
+        z-index: 4;
       }
 
-      .quadrant-chart .axis-label.tl {
-        top: 8px;
-        right: 8px;
+      .quadrant-chart .axis-tags.importance {
+        left: -10px;
+        transform: translate(-100%, -50%);
       }
 
-      .quadrant-chart .axis-label.ih {
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
+      .quadrant-chart .axis-tags.time {
+        top: 100%;
+        transform: translate(-50%, 35%);
       }
 
-      .quadrant-chart .axis-label.il {
-        bottom: 8px;
-        left: 50%;
-        transform: translateX(-50%);
+      .quadrant-chart .axis-value {
+        position: absolute;
+        font-size: 0.75rem;
+        color: var(--muted);
+        padding: 0.2rem 0.45rem;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 0.45rem;
+        z-index: 4;
+        white-space: nowrap;
+      }
+
+      .quadrant-chart .axis-value.importance {
+        left: 0;
+        transform: translate(-100%, -50%);
+      }
+
+      .quadrant-chart .axis-value.time {
+        top: 100%;
+        transform: translate(-50%, 110%);
       }
 
       .quadrant-chart .quadrant-point {
@@ -730,11 +748,24 @@
         background: rgba(15, 23, 42, 0.95);
         border: 1px solid var(--border);
         border-radius: 0.5rem;
-        white-space: nowrap;
+        white-space: normal;
         transform: translate(-50%, -120%);
         opacity: 0;
         transition: opacity 0.1s ease;
         z-index: 6;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        align-items: center;
+        text-align: center;
+      }
+
+      .chart-tooltip .tooltip-title {
+        font-weight: 700;
+      }
+
+      .chart-tooltip .tooltip-body {
+        color: var(--muted);
       }
 
       .title {
@@ -1777,7 +1808,11 @@
 
         function updateSelectedSprint(
           nextId,
-          { rerenderShortTerm = false, rerenderTasks = true } = {}
+          {
+            rerenderShortTerm = false,
+            rerenderTasks = true,
+            rerenderStats = activeTab === "stats",
+          } = {}
         ) {
           const normalized = nextId != null ? String(nextId) : null;
           if (normalized === selectedSprintId) {
@@ -1792,6 +1827,9 @@
             rerenderTaskView();
           }
           if (rerenderShortTerm) {
+            render();
+          }
+          if (rerenderStats) {
             render();
           }
         }
@@ -3873,23 +3911,35 @@
               const stateConfig = getTaskStateConfig(ref.task.state);
               const leftPercent = (1 - metrics.normalizedTime) * 100;
               const topPercent = (1 - metrics.normalizedImportance) * 100;
-              const baseTitle = `${ref.task.id} • ${
+              const title = `${ref.task.id} • ${
                 ref.task.title || "(Senza titolo)"
               }`;
-              const timeValue = format3Sig(metrics.timePriority);
-              const impValue = format3Sig(metrics.importancePriority);
+              const timeValue = format3Sig(metrics.timePriority).replace(
+                ".",
+                ","
+              );
+              const impValue = format3Sig(metrics.importancePriority).replace(
+                ".",
+                ","
+              );
               const timeThreshold = format3Sig(
                 metrics.timeThreshold ?? TaskMetricsCache.stats?.timeThreshold
-              );
+              ).replace(".", ",");
               const impThreshold = format3Sig(
                 metrics.impThreshold ?? TaskMetricsCache.stats?.impThreshold
-              );
+              ).replace(".", ",");
 
               return {
                 color: stateConfig?.color || "#38bdf8",
                 leftPercent,
                 topPercent,
-                tooltip: `${baseTitle} — Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`,
+                tooltipData: {
+                  title,
+                  timeValue,
+                  impValue,
+                  timeThreshold,
+                  impThreshold,
+                },
               };
             })
             .filter(Boolean);
@@ -3958,17 +4008,29 @@
                 (importancePriority - PRIORITY_CONFIG.MIN_PRIORITY) / priorityRange
               )
             );
-            const baseTitle = `${ref.lt.id} • ${ref.lt.title || "(Senza titolo)"}`;
-            const timeValue = format3Sig(timePriority);
-            const impValue = format3Sig(importancePriority);
-            const timeThreshold = format3Sig(context.timeThreshold);
-            const impThreshold = format3Sig(context.impThreshold);
+            const title = `${ref.lt.id} • ${ref.lt.title || "(Senza titolo)"}`;
+            const timeValue = format3Sig(timePriority).replace(".", ",");
+            const impValue = format3Sig(importancePriority).replace(".", ",");
+            const timeThreshold = format3Sig(context.timeThreshold).replace(
+              ".",
+              ","
+            );
+            const impThreshold = format3Sig(context.impThreshold).replace(
+              ".",
+              ","
+            );
 
             return {
               color: "#6366f1",
               leftPercent: (1 - normalizedTime) * 100,
               topPercent: (1 - normalizedImportance) * 100,
-              tooltip: `${baseTitle} — Tempo: ${timeValue} (soglia ${timeThreshold}) | Importanza: ${impValue} (soglia ${impThreshold})`,
+              tooltipData: {
+                title,
+                timeValue,
+                impValue,
+                timeThreshold,
+                impThreshold,
+              },
             };
           });
 
@@ -4014,21 +4076,42 @@
           );
           const verticalAxis = createAxisLine("vertical");
           const horizontalAxis = createAxisLine("horizontal");
-          chart.append(
-            verticalAxis,
-            horizontalAxis,
-            createAxisLabel("TH", "th"),
-            createAxisLabel("TL", "tl"),
-            createAxisLabel("IH", "ih"),
-            createAxisLabel("IL", "il")
-          );
+          chart.append(verticalAxis, horizontalAxis);
 
           verticalAxis.style.left = `${axisThresholds.time}%`;
           horizontalAxis.style.top = `${axisThresholds.importance}%`;
 
+          const importanceTags = document.createElement("div");
+          importanceTags.className = "axis-tags importance";
+          importanceTags.style.top = `${axisThresholds.importance}%`;
+          importanceTags.append(createAxisLabel("IH"), createAxisLabel("IL"));
+
+          const timeTags = document.createElement("div");
+          timeTags.className = "axis-tags time";
+          timeTags.style.left = `${axisThresholds.time}%`;
+          timeTags.append(createAxisLabel("TH"), createAxisLabel("TL"));
+
+          const importanceValue = document.createElement("div");
+          importanceValue.className = "axis-value importance";
+          importanceValue.style.top = `${axisThresholds.importance}%`;
+          const importanceValueText =
+            axisThresholds.importanceValue != null
+              ? format3Sig(axisThresholds.importanceValue).replace(".", ",")
+              : "-";
+          importanceValue.textContent = `I soglia: ${importanceValueText}`;
+
+          const timeValue = document.createElement("div");
+          timeValue.className = "axis-value time";
+          timeValue.style.left = `${axisThresholds.time}%`;
+          const timeValueText =
+            axisThresholds.timeValue != null
+              ? format3Sig(axisThresholds.timeValue).replace(".", ",")
+              : "-";
+          timeValue.textContent = `T soglia: ${timeValueText}`;
+
           const tooltip = document.createElement("div");
           tooltip.className = "chart-tooltip";
-          chart.appendChild(tooltip);
+          chart.append(importanceTags, timeTags, importanceValue, timeValue, tooltip);
 
           if (!points.length) {
             const empty = document.createElement("p");
@@ -4038,6 +4121,26 @@
           } else {
             const clampPercent = (value) =>
               Math.min(94, Math.max(6, Math.round(value)));
+            const placeTooltip = (leftPercent, topPercent) => {
+              const chartWidth = chart.clientWidth;
+              const chartHeight = chart.clientHeight;
+              const padding = 12;
+              const leftPx = (leftPercent / 100) * chartWidth;
+              const topPx = (topPercent / 100) * chartHeight;
+              const { offsetWidth, offsetHeight } = tooltip;
+              const halfW = offsetWidth / 2;
+              const topOffset = 14;
+              const clampedLeft = Math.min(
+                chartWidth - padding - halfW,
+                Math.max(padding + halfW, leftPx)
+              );
+              const clampedTop = Math.min(
+                chartHeight - padding - offsetHeight,
+                Math.max(padding + offsetHeight, topPx - topOffset)
+              );
+              tooltip.style.left = `${clampedLeft}px`;
+              tooltip.style.top = `${clampedTop}px`;
+            };
             points.forEach((point) => {
               const dot = document.createElement("span");
               dot.className = "quadrant-point";
@@ -4048,9 +4151,15 @@
               dot.style.top = `${top}%`;
 
               dot.addEventListener("mouseenter", () => {
-                tooltip.textContent = point.tooltip;
-                tooltip.style.left = `${left}%`;
-                tooltip.style.top = `${top}%`;
+                const title = point.tooltipData?.title || point.tooltip || "";
+                const timeValue = point.tooltipData?.timeValue || "-";
+                const impValue = point.tooltipData?.impValue || "-";
+
+                tooltip.innerHTML = `
+                  <div class="tooltip-title">${title}</div>
+                  <div class="tooltip-body">T: ${timeValue} | I: ${impValue}</div>
+                `;
+                placeTooltip(left, top);
                 tooltip.style.opacity = "1";
               });
               dot.addEventListener("mouseleave", () => {
@@ -4073,7 +4182,8 @@
 
         function createAxisLabel(text, variant) {
           const label = document.createElement("span");
-          label.className = `axis-label ${variant}`;
+          label.className = "axis-label";
+          if (variant) label.classList.add(variant);
           label.textContent = text;
           return label;
         }
@@ -4162,6 +4272,8 @@
           return {
             time: Math.round((1 - timeNorm) * 100),
             importance: Math.round((1 - importanceNorm) * 100),
+            timeValue,
+            importanceValue,
           };
         }
 
