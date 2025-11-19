@@ -689,24 +689,6 @@
         z-index: 4;
       }
 
-      .quadrant-chart .axis-tags {
-        position: absolute;
-        display: flex;
-        gap: 0.35rem;
-        align-items: center;
-        z-index: 4;
-      }
-
-      .quadrant-chart .axis-tags.importance {
-        left: -10px;
-        transform: translate(-100%, -50%);
-      }
-
-      .quadrant-chart .axis-tags.time {
-        top: 100%;
-        transform: translate(-50%, 35%);
-      }
-
       .quadrant-chart .axis-value {
         position: absolute;
         font-size: 0.75rem;
@@ -727,6 +709,30 @@
       .quadrant-chart .axis-value.time {
         top: 100%;
         transform: translate(-50%, 110%);
+      }
+
+      .quadrant-chart .axis-label.importance-top {
+        left: 0;
+        top: 0;
+        transform: translate(-110%, -20%);
+      }
+
+      .quadrant-chart .axis-label.importance-bottom {
+        left: 0;
+        top: 100%;
+        transform: translate(-110%, -80%);
+      }
+
+      .quadrant-chart .axis-label.time-left {
+        top: 100%;
+        left: 0;
+        transform: translate(-15%, 110%);
+      }
+
+      .quadrant-chart .axis-label.time-right {
+        top: 100%;
+        left: 100%;
+        transform: translate(-85%, 110%);
       }
 
       .quadrant-chart .quadrant-point {
@@ -4081,15 +4087,10 @@
           verticalAxis.style.left = `${axisThresholds.time}%`;
           horizontalAxis.style.top = `${axisThresholds.importance}%`;
 
-          const importanceTags = document.createElement("div");
-          importanceTags.className = "axis-tags importance";
-          importanceTags.style.top = `${axisThresholds.importance}%`;
-          importanceTags.append(createAxisLabel("IH"), createAxisLabel("IL"));
-
-          const timeTags = document.createElement("div");
-          timeTags.className = "axis-tags time";
-          timeTags.style.left = `${axisThresholds.time}%`;
-          timeTags.append(createAxisLabel("TH"), createAxisLabel("TL"));
+          const ihLabel = createAxisLabel("IH", "importance-top");
+          const ilLabel = createAxisLabel("IL", "importance-bottom");
+          const thLabel = createAxisLabel("TH", "time-left");
+          const tlLabel = createAxisLabel("TL", "time-right");
 
           const importanceValue = document.createElement("div");
           importanceValue.className = "axis-value importance";
@@ -4098,7 +4099,7 @@
             axisThresholds.importanceValue != null
               ? format3Sig(axisThresholds.importanceValue).replace(".", ",")
               : "-";
-          importanceValue.textContent = `I soglia: ${importanceValueText}`;
+          importanceValue.textContent = importanceValueText;
 
           const timeValue = document.createElement("div");
           timeValue.className = "axis-value time";
@@ -4107,11 +4108,19 @@
             axisThresholds.timeValue != null
               ? format3Sig(axisThresholds.timeValue).replace(".", ",")
               : "-";
-          timeValue.textContent = `T soglia: ${timeValueText}`;
+          timeValue.textContent = timeValueText;
 
           const tooltip = document.createElement("div");
           tooltip.className = "chart-tooltip";
-          chart.append(importanceTags, timeTags, importanceValue, timeValue, tooltip);
+          chart.append(
+            ihLabel,
+            ilLabel,
+            thLabel,
+            tlLabel,
+            importanceValue,
+            timeValue,
+            tooltip
+          );
 
           if (!points.length) {
             const empty = document.createElement("p");

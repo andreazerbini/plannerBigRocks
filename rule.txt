@@ -22,6 +22,7 @@ Aggiornamenti svolti:
 - Il calcolo di priority/quadrante usa esclusivamente le attività dello sprint selezionato e la vista Statistiche mostra il pannello "Quadranti attività dello sprint" insieme al pannello "Quadranti obiettivi a lungo termine".
 - Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
 - La vista Statistiche aggiorna i quadranti al cambio sprint e mostra tooltip centrati (id • titolo su due righe) con valori tempo/importanza, mantenendo etichette/soglie TH/TL/IH/IL posizionate fuori dal grafico con i valori numerici accanto.
+- Le etichette IH/IL/TH/TL sono posizionate all'esterno del grafico (IH in alto a sinistra, IL in basso a sinistra, TH in basso a sinistra, TL in basso a destra) allineate con le relative soglie mostrate a 3 cifre significative sulla stessa colonna/riga.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
