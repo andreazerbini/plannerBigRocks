@@ -21,7 +21,6 @@ Aggiornamenti svolti:
 - Nel pannello Quadranti il tooltip mostra i valori numerici (3 cifre significative) di tempo/importanza e delle soglie usate, al posto delle etichette TL/TH/IL/IH.
 - Il calcolo di priority/quadrante usa esclusivamente le attività dello sprint selezionato e la vista Statistiche mostra il pannello "Quadranti attività dello sprint" insieme al pannello "Quadranti obiettivi a lungo termine".
 - Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
-- Lo sprint drawer evidenzia il bordo al passaggio del mouse senza spostare il layout sottostante.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
@@ -48,8 +47,11 @@ Altre considerazioni:
 - Dominio / Obiettivi / Attività: Quando si effettua una modifica (ad es. sull'importanza) i controlli e la normalizzazione (es. degli oggetti antenati) viene fatta possibilmente al blur. (Quindi ad es. l'importanza non può superare quella del genitore neppure durante la digitazione o con gli spinner.)
 
 TODO:
+- fixare lo sprint-drawer sulla vista statistiche che quando si clicca sullo sprint (o si modifica un parametro dello sprint) non si aggiorna la vista
+- fixare i toolptip sui panel della vista statistica, in quanto ad oggi se vicini al bordo della finestra non si vedono bene; inoltre nel tooltip va messo: <id> • <titolo-attività> poi a capo va messo T: <x,yz> | I: <a,bc>; il tutto deve essere centrato nel tooltip
+- fixare sui panel della vista statistica la visualizzazione di "IH" e "IL" che vanno a sinistra fuori dal grafico, ma affiancati, inoltre è necessario indicare il valore della soglia di importanza a sinistra affiancato al grafico (proprio in corrispondenza del punto dove inizia la linea di confine TH/TL); mentre "TH" e "TL" vanno in basso appena sotto il grafico, ma fuori del grafico, inoltre è necessario indicare il valore della soglia di tempo in basso sotto al grafico (proprio in corrispondenza del punto dove inizia la linea di confine IH/IL)
 - Mobile first: ??? definire i dettagli da vedere per ciascuna vista
 - Aggiungere il "Mission" tab
 - Ampliare la vista di statistiche e performance (burndown chart, velocity, ecc)
-- Inserire la possibilità di
+- Modale sull'attività: con doppio click??? (da valutare) si deve aprire la modale con TUTTE le informazioni dell'attività (inclusi i riferimenti ai genitori) e la possibilità di modificarle tutte in un colpo solo con tasto salva. Vengono mostrari anche i dati calcolati (come quadrante e priority) tuttavia questi non sono modificabili in quanto calcolati e derivati da altri dati.
 - Archiviazione della settimana: da capire meglio come gestire la settimana e i task non raggiunti, oppure i task in backlog (copiarli in massa? o solo spostarli?)
