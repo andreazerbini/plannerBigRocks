@@ -633,6 +633,7 @@
         background: rgba(11, 15, 22, 0.6);
         overflow: visible;
         padding: 12px;
+        --axis-offset: 10px;
       }
 
       .quadrant-chart .quadrant-bg {
@@ -702,37 +703,33 @@
       }
 
       .quadrant-chart .axis-value.importance {
-        left: 0;
-        transform: translate(-100%, -50%);
+        left: var(--axis-offset);
+        transform: translate(0, -50%);
       }
 
       .quadrant-chart .axis-value.time {
-        top: 100%;
-        transform: translate(-50%, 110%);
+        bottom: var(--axis-offset);
+        transform: translate(-50%, 0);
       }
 
       .quadrant-chart .axis-label.importance-top {
-        left: 0;
-        top: 0;
-        transform: translate(-110%, -20%);
+        left: var(--axis-offset);
+        top: var(--axis-offset);
       }
 
       .quadrant-chart .axis-label.importance-bottom {
-        left: 0;
-        top: 100%;
-        transform: translate(-110%, -80%);
+        left: var(--axis-offset);
+        bottom: var(--axis-offset);
       }
 
       .quadrant-chart .axis-label.time-left {
-        top: 100%;
-        left: 0;
-        transform: translate(-15%, 110%);
+        bottom: var(--axis-offset);
+        left: var(--axis-offset);
       }
 
       .quadrant-chart .axis-label.time-right {
-        top: 100%;
-        left: 100%;
-        transform: translate(-85%, 110%);
+        bottom: var(--axis-offset);
+        right: var(--axis-offset);
       }
 
       .quadrant-chart .quadrant-point {
