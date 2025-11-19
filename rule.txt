@@ -25,6 +25,7 @@ Aggiornamenti svolti:
 - Le tabelle (Ruoli, LT, BT, Attività) mantengono l'ordinamento scelto anche dopo modifiche e rerender della vista.
  - La vista Statistiche aggiorna i quadranti al cambio sprint e mostra tooltip centrati (id • titolo su due righe) con valori tempo/importanza, mantenendo etichette/soglie TH/TL/IH/IL all'interno del pannello e a ridosso del grafico con i valori numerici accanto.
  - Le etichette IH/IL/TH/TL sono adagiate lungo il bordo del grafico (IH in alto a sinistra, IL in basso a sinistra, TH in basso a sinistra, TL in basso a destra) condividendo colonna/riga con le soglie mostrate a 3 cifre significative.
+ - La vista Statistiche include un burndown chart dello sprint corrente basato sulle stime delle attività, compatibile con i filtri e con il controllo fullscreen.
 
 Partiamo dal DOMINIO, ovvero il nostro JSON.
 La radice contiene la collezione di "Ruoli" (con titolo e importanza) e, accanto a questi, la collezione di "Sprint" con id, nome, date di inizio/fine e l'elenco dei BT associati, oltre al riferimento `currentSprintId` che indica lo sprint attivo.
@@ -53,7 +54,6 @@ Altre considerazioni:
 TODO:
 - Mobile first: ??? definire i dettagli da vedere per ciascuna vista
 - Aggiungere il "Mission" tab
-- Ampliare la vista di statistiche e performance (burndown chart, velocity, ecc)
 - Modale sull'attività: con doppio click??? (da valutare) si deve aprire la modale con TUTTE le informazioni dell'attività (inclusi i riferimenti ai genitori) e la possibilità di modificarle tutte in un colpo solo con tasto salva. Vengono mostrari anche i dati calcolati (come quadrante e priority) tuttavia questi non sono modificabili in quanto calcolati e derivati da altri dati.
 - Archiviazione della settimana: da capire meglio come gestire la settimana e i task non raggiunti, oppure i task in backlog (copiarli in massa? o solo spostarli?)
 

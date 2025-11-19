@@ -772,6 +772,103 @@
         color: var(--muted);
       }
 
+      .burndown-chart {
+        position: relative;
+        height: 320px;
+        border: 1px dashed var(--border);
+        border-radius: 0.75rem;
+        background: rgba(11, 15, 22, 0.6);
+        padding: 0.75rem;
+      }
+
+      .burndown-chart svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .burndown-grid-line {
+        stroke: rgba(148, 163, 184, 0.15);
+        stroke-width: 0.5;
+        shape-rendering: crispEdges;
+      }
+
+      .burndown-axis {
+        stroke: rgba(148, 163, 184, 0.4);
+        stroke-width: 0.8;
+      }
+
+      .burndown-path {
+        fill: none;
+        stroke-width: 2.5;
+      }
+
+      .burndown-path.actual {
+        stroke: #22c55e;
+      }
+
+      .burndown-path.ideal {
+        stroke: #38bdf8;
+        stroke-dasharray: 4 4;
+      }
+
+      .burndown-point {
+        fill: #0b0f16;
+        stroke: #22c55e;
+        stroke-width: 1.4;
+      }
+
+      .burndown-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.35rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .burndown-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        align-items: center;
+        margin-top: 0.6rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+      }
+
+      .legend-swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.35);
+      }
+
+      .burndown-summary {
+        margin-top: 0.35rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .burndown-summary .pill {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
       .title {
         font-weight: 700;
       }
@@ -3979,6 +4076,7 @@
           const panels = document.createElement("div");
           panels.className = "panel-grid";
           panels.appendChild(createTaskQuadrantsPanel());
+          panels.appendChild(createBurndownPanel());
           panels.appendChild(createLongTermQuadrantsPanel());
 
           dom.view.append(sprintDrawer, filtersDrawer, panels);
@@ -3988,6 +4086,318 @@
           const num = Number(value);
           return Number.isFinite(num) ? Number(num).toPrecision(3) : "-";
         };
+
+        function createBurndownPanel() {
+          const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
+          const sprint = (AppState.data.sprints || []).find(
+            (candidate) => candidate.id === sprintId
+          );
+
+          const panel = document.createElement("article");
+          panel.className = "panel";
+
+          const header = document.createElement("div");
+          header.className = "panel-header";
+          const heading = document.createElement("h3");
+          heading.textContent = "Burndown sprint";
+          const actions = document.createElement("div");
+          actions.className = "panel-actions";
+          const fullscreenBtn = button("Fullscreen", "", () => {
+            panel.classList.toggle("fullscreen");
+            fullscreenBtn.textContent = panel.classList.contains("fullscreen")
+              ? "Chiudi"
+              : "Fullscreen";
+          });
+          actions.append(fullscreenBtn);
+          header.append(heading, actions);
+
+          const body = document.createElement("div");
+          body.className = "panel-body";
+
+          if (!sprint) {
+            body.textContent = "Seleziona uno sprint per visualizzare il burndown.";
+            panel.append(header, body);
+            return panel;
+          }
+
+          const timeline = buildSprintTimeline(sprint.start, sprint.end);
+          if (!timeline.length) {
+            body.textContent =
+              "Imposta date di inizio/fine sprint per visualizzare il burndown.";
+            panel.append(header, body);
+            return panel;
+          }
+
+          const sprintTasks = getFilteredTaskRefs().filter(
+            ({ st }) => st.sprint_id === sprintId
+          );
+          if (!sprintTasks.length) {
+            body.textContent = "Nessuna attività nello sprint selezionato.";
+            panel.append(header, body);
+            return panel;
+          }
+
+          const totalEffort = sprintTasks.reduce((sum, { task }) => {
+            return sum + (task.estimate_hours || 0);
+          }, 0);
+
+          if (totalEffort <= 0) {
+            body.textContent =
+              "Nessuna stima di effort disponibile per il burndown dello sprint.";
+            panel.append(header, body);
+            return panel;
+          }
+
+          const actualSeries = buildBurndownSeries(
+            timeline,
+            sprintTasks,
+            totalEffort
+          );
+          const idealSeries = buildIdealBurndownSeries(timeline, totalEffort);
+          const chart = createBurndownChart(
+            timeline,
+            actualSeries,
+            idealSeries,
+            totalEffort
+          );
+
+          const legend = createBurndownLegend();
+          const summary = createBurndownSummary(actualSeries, totalEffort, sprint);
+
+          body.append(chart, legend, summary);
+          panel.append(header, body);
+          return panel;
+        }
+
+        function buildSprintTimeline(start, end) {
+          if (!start || !end) return [];
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+          if (Number.isNaN(startDate) || Number.isNaN(endDate)) return [];
+          if (startDate > endDate) return [];
+          const dates = [];
+          const cursor = new Date(startDate);
+          while (cursor <= endDate) {
+            dates.push(cursor.toISOString().slice(0, 10));
+            cursor.setDate(cursor.getDate() + 1);
+          }
+          return dates;
+        }
+
+        function clampIsoDate(value, min, max) {
+          const fallback = max || min;
+          if (!value && !fallback) return null;
+          const minDate = min ? new Date(min) : null;
+          const maxDate = max ? new Date(max) : null;
+          let parsed = value ? new Date(value) : fallback ? new Date(fallback) : null;
+          if (!parsed || Number.isNaN(parsed)) {
+            parsed = fallback ? new Date(fallback) : null;
+          }
+          if (!parsed) return null;
+          if (minDate && parsed < minDate) parsed = minDate;
+          if (maxDate && parsed > maxDate) parsed = maxDate;
+          return parsed.toISOString().slice(0, 10);
+        }
+
+        function buildBurndownSeries(timeline, refs, totalEffort) {
+          const burnsByDate = new Map();
+          const start = timeline[0];
+          const end = timeline[timeline.length - 1];
+          refs.forEach(({ task }) => {
+            const stateId = getTaskStateId(task.state);
+            if (!CLOSING_TASK_STATES.has(stateId)) return;
+            const effort = task.estimate_hours || 0;
+            if (!effort) return;
+            const closedOn = clampIsoDate(task.closed_on, start, end) || end;
+            const current = burnsByDate.get(closedOn) || 0;
+            burnsByDate.set(closedOn, current + effort);
+          });
+
+          let remaining = totalEffort;
+          return timeline.map((date) => {
+            const burn = burnsByDate.get(date) || 0;
+            remaining = Math.max(0, remaining - burn);
+            return { date, remaining };
+          });
+        }
+
+        function buildIdealBurndownSeries(timeline, totalEffort) {
+          if (!timeline.length) return [];
+          if (timeline.length === 1) return [{ date: timeline[0], remaining: 0 }];
+          const step = totalEffort / (timeline.length - 1);
+          return timeline.map((date, index) => ({
+            date,
+            remaining: Math.max(0, totalEffort - step * index),
+          }));
+        }
+
+        function createBurndownChart(timeline, actual, ideal, totalEffort) {
+          const chart = document.createElement("div");
+          chart.className = "burndown-chart";
+
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          const viewWidth = 100;
+          const viewHeight = 70;
+          const padding = 10;
+          const innerWidth = viewWidth - padding * 2;
+          const innerHeight = viewHeight - padding * 2;
+          svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
+          svg.setAttribute("role", "img");
+          svg.setAttribute("aria-label", "Burndown chart dello sprint");
+
+          const toPoint = (entry, index) => {
+            const x =
+              padding +
+              (timeline.length > 1
+                ? (innerWidth * index) / (timeline.length - 1)
+                : innerWidth / 2);
+            const ratio = totalEffort > 0 ? entry.remaining / totalEffort : 0;
+            const clampedRatio = Math.min(1, Math.max(0, ratio));
+            const y = padding + (1 - clampedRatio) * innerHeight;
+            return `${x},${y}`;
+          };
+
+          for (let i = 0; i <= 4; i += 1) {
+            const y = padding + (innerHeight / 4) * i;
+            const grid = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "line"
+            );
+            grid.setAttribute("x1", padding);
+            grid.setAttribute("x2", viewWidth - padding);
+            grid.setAttribute("y1", y);
+            grid.setAttribute("y2", y);
+            grid.setAttribute("class", "burndown-grid-line");
+            svg.appendChild(grid);
+          }
+
+          const yAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          yAxis.setAttribute("x1", padding);
+          yAxis.setAttribute("x2", padding);
+          yAxis.setAttribute("y1", padding);
+          yAxis.setAttribute("y2", viewHeight - padding);
+          yAxis.setAttribute("class", "burndown-axis");
+          svg.appendChild(yAxis);
+
+          const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          xAxis.setAttribute("x1", padding);
+          xAxis.setAttribute("x2", viewWidth - padding);
+          xAxis.setAttribute("y1", viewHeight - padding);
+          xAxis.setAttribute("y2", viewHeight - padding);
+          xAxis.setAttribute("class", "burndown-axis");
+          svg.appendChild(xAxis);
+
+          const idealPath = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "polyline"
+          );
+          idealPath.setAttribute(
+            "points",
+            ideal.map((entry, idx) => toPoint(entry, idx)).join(" ")
+          );
+          idealPath.setAttribute("class", "burndown-path ideal");
+          svg.appendChild(idealPath);
+
+          const actualPath = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "polyline"
+          );
+          actualPath.setAttribute(
+            "points",
+            actual.map((entry, idx) => toPoint(entry, idx)).join(" ")
+          );
+          actualPath.setAttribute("class", "burndown-path actual");
+          svg.appendChild(actualPath);
+
+          actual.forEach((entry, idx) => {
+            const [x, y] = toPoint(entry, idx).split(",").map(Number);
+            const circle = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "circle"
+            );
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", 1.8);
+            circle.setAttribute("class", "burndown-point");
+            svg.appendChild(circle);
+          });
+
+          chart.appendChild(svg);
+
+          const labels = document.createElement("div");
+          labels.className = "burndown-labels";
+          labels.append(
+            document.createTextNode(formatShortDate(timeline[0])),
+            document.createTextNode(formatShortDate(timeline[timeline.length - 1]))
+          );
+          chart.appendChild(labels);
+
+          return chart;
+        }
+
+        function createBurndownLegend() {
+          const container = document.createElement("div");
+          container.className = "burndown-legend";
+
+          const actual = document.createElement("span");
+          actual.className = "legend-item";
+          const actualSwatch = document.createElement("span");
+          actualSwatch.className = "legend-swatch";
+          actualSwatch.style.background = "#22c55e";
+          actual.append(actualSwatch, document.createTextNode("Andamento reale"));
+
+          const ideal = document.createElement("span");
+          ideal.className = "legend-item";
+          const idealSwatch = document.createElement("span");
+          idealSwatch.className = "legend-swatch";
+          idealSwatch.style.background = "#38bdf8";
+          ideal.append(idealSwatch, document.createTextNode("Linea ideale"));
+
+          container.append(actual, ideal);
+          return container;
+        }
+
+        function createBurndownSummary(series, totalEffort, sprint) {
+          const container = document.createElement("div");
+          container.className = "burndown-summary";
+          const remaining = series[series.length - 1]?.remaining ?? totalEffort;
+          const burned = Math.max(0, totalEffort - remaining);
+
+          const totalPill = document.createElement("span");
+          totalPill.className = "pill";
+          totalPill.textContent = `Effort totale stimato: ${formatHours(
+            totalEffort
+          )} h`;
+
+          const burnedPill = document.createElement("span");
+          burnedPill.className = "pill";
+          burnedPill.textContent = `Consumato: ${formatHours(burned)} h`;
+
+          const remainingPill = document.createElement("span");
+          remainingPill.className = "pill";
+          remainingPill.textContent = `Residuo: ${formatHours(remaining)} h`;
+
+          const windowPill = document.createElement("span");
+          windowPill.className = "pill";
+          windowPill.textContent = `Finestra sprint: ${formatShortDate(
+            sprint.start
+          )} → ${formatShortDate(sprint.end)}`;
+
+          container.append(totalPill, burnedPill, remainingPill, windowPill);
+          return container;
+        }
+
+        function formatShortDate(value) {
+          if (!value) return "-";
+          try {
+            return new Date(value).toLocaleDateString("it-IT", {
+              day: "2-digit",
+              month: "2-digit",
+            });
+          } catch (err) {
+            return value;
+          }
+        }
 
         function createTaskQuadrantsPanel() {
           const sprintId = selectedSprintId || AppState.data.currentSprintId || null;
