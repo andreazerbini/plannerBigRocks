@@ -786,7 +786,7 @@
         border-radius: 0.75rem;
         background: rgba(11, 15, 22, 0.6);
         padding: 0.75rem 0.75rem 2.1rem;
-        --burndown-padding-pct: 10%;
+        --burndown-padding-pct: 40%;
       }
 
       .burndown-plot-area {
@@ -4279,11 +4279,11 @@
           chart.className = "burndown-chart";
 
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          const viewWidth = 100;
-          const viewHeight = 70;
+          const viewWidth = 200;
+          const viewHeight = 100;
           const padding = 10;
-          const paddingPercent = (padding / viewWidth) * 100;
-          chart.style.setProperty("--burndown-padding-pct", `${paddingPercent}%`);
+          // const paddingPercent = (padding / viewWidth) * 100;
+         // chart.style.setProperty("--burndown-padding-pct", `${paddingPercent}%`);
           const innerWidth = viewWidth - padding * 2;
           const innerHeight = viewHeight - padding * 2;
           svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
