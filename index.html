@@ -4262,8 +4262,8 @@
           const viewWidth = 200;
           const viewHeight = 100;
           const padding = 10;
-          // const paddingPercent = (padding / viewWidth) * 100;
-         // chart.style.setProperty("--burndown-padding-pct", `${paddingPercent}%`);
+          const paddingPercent = (padding / viewWidth) * 100;
+          chart.style.setProperty("--burndown-padding-pct", `${paddingPercent}%`);
           const innerWidth = viewWidth - padding * 2;
           const innerHeight = viewHeight - padding * 2;
           svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
