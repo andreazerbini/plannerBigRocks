@@ -832,42 +832,22 @@
         stroke-width: 1.4;
       }
 
-      .burndown-labels {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: -1.25rem;
-        height: 1.25rem;
-        font-size: 0.82rem;
-        color: var(--muted);
+      .burndown-axis-text {
+        fill: var(--muted);
+        font-size: 3.15px;
+        font-family: inherit;
+        letter-spacing: 0.1px;
         pointer-events: none;
       }
 
-      .burndown-x-label {
-        position: absolute;
-        bottom: 0;
-        transform: translateX(-50%);
-        text-align: center;
-        min-width: 2ch;
+      .burndown-axis-text.y-label {
+        text-anchor: end;
+        dominant-baseline: middle;
       }
 
-      .burndown-y-labels {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: var(--burndown-padding-pct);
-        width: max-content;
-        transform: translateX(-70%);
-        font-size: 0.82rem;
-        color: var(--muted);
-        pointer-events: none;
-      }
-
-      .burndown-y-label {
-        position: absolute;
-        left: 0;
-        transform: translateY(-50%);
-        white-space: nowrap;
+      .burndown-axis-text.x-label {
+        text-anchor: middle;
+        dominant-baseline: hanging;
       }
 
       .burndown-legend {
@@ -4372,8 +4352,8 @@
 
           plotArea.appendChild(svg);
 
-          const yLabels = document.createElement("div");
-          yLabels.className = "burndown-y-labels";
+          const yLabels = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          yLabels.setAttribute("class", "burndown-axis-text y-labels");
           const seenEfforts = new Set();
           const effortRows = [];
           actual.forEach((entry, idx) => {
@@ -4386,26 +4366,35 @@
           effortRows
             .sort((a, b) => a.y - b.y)
             .forEach((row) => {
-              const label = document.createElement("span");
-              label.className = "burndown-y-label";
+              const label = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "text"
+              );
+              label.setAttribute("class", "burndown-axis-text y-label");
+              label.setAttribute("x", padding - 1.2);
+              label.setAttribute("y", row.y);
               label.textContent = `${formatHours(row.value)} h`;
-              label.style.top = `${(row.y / viewHeight) * 100}%`;
               yLabels.appendChild(label);
             });
-          plotArea.appendChild(yLabels);
+          svg.appendChild(yLabels);
 
-          const labels = document.createElement("div");
-          labels.className = "burndown-labels";
+          const xLabels = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          xLabels.setAttribute("class", "burndown-axis-text x-labels");
+          const xLabelOffset = 4.2;
           timeline.forEach((date, idx) => {
-            const span = document.createElement("span");
             const [x] = toPoint(actual[idx], idx).split(",").map(Number);
-            span.className = "burndown-x-label";
-            span.style.left = `${(x / viewWidth) * 100}%`;
-            span.textContent = formatDayOfMonth(date);
-            span.title = formatShortDate(date);
-            labels.appendChild(span);
+            const label = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "text"
+            );
+            label.setAttribute("class", "burndown-axis-text x-label");
+            label.setAttribute("x", x);
+            label.setAttribute("y", viewHeight - padding + xLabelOffset);
+            label.textContent = formatDayOfMonth(date);
+            label.setAttribute("aria-label", formatShortDate(date));
+            xLabels.appendChild(label);
           });
-          plotArea.appendChild(labels);
+          svg.appendChild(xLabels);
 
           chart.appendChild(plotArea);
 
